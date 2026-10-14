@@ -1,0 +1,28 @@
+# Dependencies
+node_modules/
+
+# Production build outputs
+dist/
+dist-ssr/
+
+# Tauri build outputs
+src-tauri/target/
+
+# Vite cache
+.vite/
+
+# Logs
+*.log
+
+# Operating System files
+.DS_Store
+Thumbs.db
+
+# Environment and secrets
+.env
+.env.local
+*.local
+
+# IDE and Editor files
+.vscode/
+.idea/

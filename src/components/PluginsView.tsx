@@ -1,0 +1,315 @@
+import { useEffect, useRef, useState } from "react";
+import { api } from "../api";
+import type { MarketplaceSummary, PluginSummary, Scope } from "../types";
+import Button from "./Button";
+import { useLanguage } from "./LanguageProvider";
+import Select from "./Select";
+import TextInput from "./TextInput";
+import { useToast } from "./ToastProvider";
+
+interface Props {
+  scope: Scope;
+}
+
+const toCliScope = (scope: Scope) => (scope === "project" ? "project" : "user");
+
+// One page at a time — the real catalog is thousands of entries, so neither
+// the backend nor this component ever holds more than what's actually shown.
+const PAGE_SIZE = 50;
+
+export default function PluginsView({ scope }: Props) {
+  const [marketplaces, setMarketplaces] = useState<MarketplaceSummary[]>([]);
+  const [installed, setInstalled] = useState<PluginSummary[]>([]);
+  const [availableItems, setAvailableItems] = useState<PluginSummary[]>([]);
+  const [availableTotal, setAvailableTotal] = useState(0);
+  const [availableLoading, setAvailableLoading] = useState(false);
+  const [newSource, setNewSource] = useState("");
+  const [marketplaceScope, setMarketplaceScope] = useState(toCliScope(scope));
+  const [installScope, setInstallScope] = useState(toCliScope(scope));
+  const [availableMarketplace, setAvailableMarketplace] = useState("");
+  const [availableSearch, setAvailableSearch] = useState("");
+  const [busy, setBusy] = useState<Set<string>>(new Set());
+  const toast = useToast();
+  const { t } = useLanguage();
+  const searchRequestId = useRef(0);
+
+  const refresh = async () => {
+    const [mp, inst] = await Promise.all([api.listMarketplaces(), api.listInstalledPlugins()]);
+    setMarketplaces(mp);
+    setInstalled(inst);
+    setAvailableMarketplace((current) => (current && mp.some((m) => m.name === current) ? current : mp[0]?.name ?? ""));
+  };
+
+  useEffect(() => {
+    refresh();
+    setMarketplaceScope(toCliScope(scope));
+    setInstallScope(toCliScope(scope));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [scope]);
+
+  const runAvailableSearch = async (offset: number, append: boolean) => {
+    if (!availableMarketplace) {
+      setAvailableItems([]);
+      setAvailableTotal(0);
+      return;
+    }
+    const requestId = ++searchRequestId.current;
+    setAvailableLoading(true);
+    try {
+      const page = await api.searchAvailablePlugins(availableMarketplace, availableSearch.trim(), offset, PAGE_SIZE);
+      if (requestId !== searchRequestId.current) return; // a newer search landed first
+      setAvailableItems((prev) => (append ? [...prev, ...page.items] : page.items));
+      setAvailableTotal(page.total);
+    } catch (e) {
+      if (requestId === searchRequestId.current) toast.error(String(e));
+    } finally {
+      if (requestId === searchRequestId.current) setAvailableLoading(false);
+    }
+  };
+
+  // Debounced so typing doesn't fire a search (and a cold `claude plugin
+  // list --json --available` parse, the first time) per keystroke.
+  useEffect(() => {
+    const timer = setTimeout(() => runAvailableSearch(0, false), 200);
+    return () => clearTimeout(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [availableMarketplace, availableSearch]);
+
+  const withBusy = async (key: string, fn: () => Promise<string>) => {
+    setBusy((prev) => new Set(prev).add(key));
+    try {
+      const message = await fn();
+      toast.success(message);
+      await refresh();
+    } catch (e) {
+      toast.error(String(e));
+    } finally {
+      setBusy((prev) => {
+        const next = new Set(prev);
+        next.delete(key);
+        return next;
+      });
+    }
+  };
+
+  const addMarketplace = () => {
+    if (!newSource.trim()) return;
+    withBusy(`add-mp-${newSource}`, async () => {
+      const msg = await api.addMarketplace(newSource.trim(), marketplaceScope);
+      setNewSource("");
+      await runAvailableSearch(0, false); // marketplace catalog may have changed
+      return msg;
+    });
+  };
+
+  return (
+    <div className="h-full overflow-y-auto p-5">
+      <div className="max-w-2xl space-y-6">
+        <p className="text-xs" style={{ color: "var(--text-muted)" }}>
+          {t.plugins.intro}
+        </p>
+
+        <div>
+          <div className="flex items-center justify-between">
+            <h2 className="text-sm font-semibold">{t.plugins.marketplacesTitle}</h2>
+            <Button size="sm" variant="ghost" onClick={refresh}>
+              {t.plugins.refresh}
+            </Button>
+          </div>
+          <div className="flex gap-1 mt-2">
+            <TextInput
+              value={newSource}
+              onChange={(e) => setNewSource(e.target.value)}
+              placeholder={t.plugins.marketplaceSourcePlaceholder}
+              className="flex-1"
+              onKeyDown={(e) => e.key === "Enter" && addMarketplace()}
+            />
+            <Select value={marketplaceScope} onChange={(e) => setMarketplaceScope(e.target.value)} className="w-28">
+              <option value="project">project</option>
+              <option value="user">user</option>
+            </Select>
+            <Button onClick={addMarketplace} disabled={busy.has(`add-mp-${newSource}`)}>
+              {t.plugins.addMarketplace}
+            </Button>
+          </div>
+
+          <div className="mt-2 space-y-1.5">
+            {marketplaces.length === 0 && (
+              <p className="text-xs" style={{ color: "var(--text-muted)" }}>
+                {t.plugins.noMarketplaces}
+              </p>
+            )}
+            {marketplaces.map((m) => (
+              <div
+                key={m.name}
+                className="p-2.5 rounded-lg border flex items-start gap-3"
+                style={{ borderColor: "var(--border)" }}
+              >
+                <div className="min-w-0 flex-1">
+                  <div className="text-sm font-medium truncate">{m.name}</div>
+                  <div className="text-xs mt-0.5 truncate" style={{ color: "var(--text-muted)" }}>
+                    {m.source} — {m.repo || m.url || m.path || ""}
+                  </div>
+                </div>
+                <Button
+                  size="sm"
+                  variant="danger"
+                  className="shrink-0"
+                  disabled={busy.has(`rm-mp-${m.name}`)}
+                  onClick={() =>
+                    withBusy(`rm-mp-${m.name}`, async () => {
+                      const msg = await api.removeMarketplace(m.name);
+                      await runAvailableSearch(0, false); // marketplace catalog may have changed
+                      return msg;
+                    })
+                  }
+                >
+                  {t.plugins.remove}
+                </Button>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div>
+          <h2 className="text-sm font-semibold">{t.plugins.pluginsTitle}</h2>
+
+          {installed.length === 0 && marketplaces.length === 0 && (
+            <p className="text-xs mt-2" style={{ color: "var(--text-muted)" }}>
+              {t.plugins.noPlugins}
+            </p>
+          )}
+
+          {installed.length > 0 && (
+            <div className="mt-2">
+              <div className="text-xs font-medium" style={{ color: "var(--text-muted)" }}>
+                {t.plugins.installedSection}
+              </div>
+              <div className="mt-1 space-y-1.5">
+                {installed.map((p) => (
+                  <div
+                    key={p.id}
+                    className="p-2.5 rounded-lg border flex items-start gap-2"
+                    style={{ borderColor: "var(--border)" }}
+                  >
+                    <div className="min-w-0 flex-1">
+                      <div className="text-sm font-medium truncate">{p.id}</div>
+                      <div className="text-xs mt-0.5" style={{ color: "var(--text-muted)" }}>
+                        v{p.version} — scope: {p.scope} — {p.enabled ? t.plugins.enable : t.plugins.disable}
+                      </div>
+                    </div>
+                    <Button
+                      size="sm"
+                      variant={p.enabled ? "ghost" : "primary"}
+                      disabled={busy.has(`toggle-${p.id}`)}
+                      onClick={() =>
+                        withBusy(`toggle-${p.id}`, () =>
+                          p.enabled
+                            ? api.disablePlugin(p.name, p.marketplace, p.scope)
+                            : api.enablePlugin(p.name, p.marketplace, p.scope),
+                        )
+                      }
+                    >
+                      {p.enabled ? t.plugins.disable : t.plugins.enable}
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="danger"
+                      disabled={busy.has(`uninstall-${p.id}`)}
+                      onClick={() =>
+                        withBusy(`uninstall-${p.id}`, () => api.uninstallPlugin(p.name, p.marketplace, p.scope))
+                      }
+                    >
+                      {t.plugins.uninstall}
+                    </Button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {marketplaces.length > 0 && (
+            <div className="mt-4">
+              <div className="flex items-center justify-between gap-2">
+                <div className="text-xs font-medium shrink-0" style={{ color: "var(--text-muted)" }}>
+                  {t.plugins.availableSection}
+                </div>
+                <Select
+                  value={availableMarketplace}
+                  onChange={(e) => setAvailableMarketplace(e.target.value)}
+                  compact
+                >
+                  {marketplaces.map((m) => (
+                    <option key={m.name} value={m.name}>
+                      {m.name}
+                    </option>
+                  ))}
+                </Select>
+                <Select value={installScope} onChange={(e) => setInstallScope(e.target.value)} compact>
+                  <option value="project">project</option>
+                  <option value="user">user</option>
+                  <option value="local">local</option>
+                </Select>
+              </div>
+              <TextInput
+                value={availableSearch}
+                onChange={(e) => setAvailableSearch(e.target.value)}
+                placeholder={t.plugins.searchPlaceholder}
+                className="w-full mt-1.5"
+                small
+              />
+              {availableTotal > 0 && (
+                <div className="text-[11px] mt-1" style={{ color: "var(--text-muted)" }}>
+                  {t.plugins.showingCount(availableItems.length, availableTotal)}
+                </div>
+              )}
+              <div className="mt-1.5 space-y-1.5">
+                {availableItems.map((p) => (
+                  <div
+                    key={p.id}
+                    className="p-2.5 rounded-lg border flex items-start gap-3"
+                    style={{ borderColor: "var(--border)" }}
+                  >
+                    <div className="min-w-0 flex-1">
+                      <div className="text-sm font-medium truncate">{p.id}</div>
+                      {p.description && (
+                        <div className="text-xs mt-0.5" style={{ color: "var(--text-muted)" }}>
+                          {p.description}
+                        </div>
+                      )}
+                    </div>
+                    <Button
+                      size="sm"
+                      className="shrink-0"
+                      disabled={busy.has(`install-${p.id}`)}
+                      onClick={() =>
+                        withBusy(`install-${p.id}`, () => api.installPlugin(p.name, p.marketplace, installScope))
+                      }
+                    >
+                      {t.plugins.install}
+                    </Button>
+                  </div>
+                ))}
+                {availableItems.length === 0 && !availableLoading && (
+                  <p className="text-xs" style={{ color: "var(--text-muted)" }}>
+                    {t.plugins.noneFound}
+                  </p>
+                )}
+                {availableLoading && (
+                  <p className="text-xs" style={{ color: "var(--text-muted)" }}>
+                    {t.plugins.searching}
+                  </p>
+                )}
+                {!availableLoading && availableItems.length < availableTotal && (
+                  <Button size="sm" variant="ghost" onClick={() => runAvailableSearch(availableItems.length, true)}>
+                    {t.plugins.loadMore}
+                  </Button>
+                )}
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
