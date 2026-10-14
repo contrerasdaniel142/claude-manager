@@ -30,7 +30,7 @@ fn run_json_command(lang: Lang, args: &[&str]) -> Result<String, String> {
         return Ok(stdout.trim().to_string());
     }
     let reason = if !stderr.trim().is_empty() { stderr.trim() } else { stdout.trim() };
-    Err(i18n::claude_returned_error(lang, reason))
+    Err(i18n::claude_returned_error(lang, reason, code))
 }
 
 #[tauri::command]
@@ -38,7 +38,7 @@ pub fn list_marketplaces(state: State<AppState>) -> Result<Vec<MarketplaceSummar
     let lang = state.lang();
     let (stdout, stderr, code) = run_claude_plugin(lang, &["marketplace", "list", "--json"])?;
     if code != 0 {
-        return Err(i18n::claude_returned_error(lang, stderr.trim()));
+        return Err(i18n::claude_returned_error(lang, stderr.trim(), code));
     }
     let arr: Vec<Value> = serde_json::from_str(stdout.trim()).unwrap_or_default();
     Ok(arr
@@ -129,7 +129,7 @@ pub async fn list_installed_plugins(state: State<'_, AppState>) -> Result<Vec<Pl
     tauri::async_runtime::spawn_blocking(move || {
         let (stdout, stderr, code) = run_claude_plugin(lang, &["list", "--json"])?;
         if code != 0 {
-            return Err(i18n::claude_returned_error(lang, stderr.trim()));
+            return Err(i18n::claude_returned_error(lang, stderr.trim(), code));
         }
         let arr: Vec<Value> = serde_json::from_str(stdout.trim()).unwrap_or_default();
         Ok(arr.iter().map(|v| parse_plugin(v, true)).collect())
@@ -144,14 +144,16 @@ pub async fn list_installed_plugins(state: State<'_, AppState>) -> Result<Vec<Pl
 /// the frontend on every keystroke, we pay the parse cost once, cache the
 /// parsed `Vec<PluginSummary>` in `AppState`, and do the filtering/pagination
 /// here so only one small page ever crosses the IPC bridge.
-fn available_plugins(state: &AppState) -> Result<Vec<PluginSummary>, String> {
-    if let Some(cached) = state.cached_available_plugins() {
-        return Ok(cached);
+pub fn available_plugins(state: &AppState, force: bool) -> Result<Vec<PluginSummary>, String> {
+    if !force {
+        if let Some(cached) = state.cached_available_plugins() {
+            return Ok(cached);
+        }
     }
     let lang = state.lang();
     let (stdout, stderr, code) = run_claude_plugin(lang, &["list", "--json", "--available"])?;
     if code != 0 {
-        return Err(i18n::claude_returned_error(lang, stderr.trim()));
+        return Err(i18n::claude_returned_error(lang, stderr.trim(), code));
     }
     let doc: Value = serde_json::from_str(stdout.trim()).unwrap_or_default();
     let available: Vec<PluginSummary> = doc
@@ -193,10 +195,11 @@ pub async fn search_available_plugins(
     query: String,
     offset: usize,
     limit: usize,
+    force: bool,
 ) -> Result<PluginSearchPage, String> {
     let state = state.inner().clone();
     tauri::async_runtime::spawn_blocking(move || {
-        let all = available_plugins(&state)?;
+        let all = available_plugins(&state, force)?;
         Ok(filter_available(&all, &marketplace, &query, offset, limit))
     })
     .await

@@ -127,8 +127,8 @@ export const api = {
   addMarketplace: (source: string, scope: string) => invoke<string>("add_marketplace", { source, scope }),
   removeMarketplace: (name: string) => invoke<string>("remove_marketplace", { name }),
   listInstalledPlugins: () => invoke<PluginSummary[]>("list_installed_plugins"),
-  searchAvailablePlugins: (marketplace: string, query: string, offset: number, limit: number) =>
-    invoke<PluginSearchPage>("search_available_plugins", { marketplace, query, offset, limit }),
+  searchAvailablePlugins: (marketplace: string, query: string, offset: number, limit: number, force = false) =>
+    invoke<PluginSearchPage>("search_available_plugins", { marketplace, query, offset, limit, force }),
   installPlugin: (name: string, marketplace: string, scope: string) =>
     invoke<string>("install_plugin", { name, marketplace, scope }),
   uninstallPlugin: (name: string, marketplace: string, scope: string) =>

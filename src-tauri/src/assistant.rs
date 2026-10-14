@@ -291,7 +291,8 @@ fn generate_with_ai_impl(
 
     if !output.status.success() {
         let stderr = String::from_utf8_lossy(&output.stderr);
-        return Err(i18n::claude_returned_error(lang, stderr.trim()));
+        let code = output.status.code().unwrap_or(-1);
+        return Err(i18n::claude_returned_error(lang, stderr.trim(), code));
     }
 
     let stdout = String::from_utf8_lossy(&output.stdout);

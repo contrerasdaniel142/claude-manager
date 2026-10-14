@@ -47,7 +47,7 @@ export default function PluginsView({ scope }: Props) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [scope]);
 
-  const runAvailableSearch = async (offset: number, append: boolean) => {
+  const runAvailableSearch = async (offset: number, append: boolean, force = false) => {
     if (!availableMarketplace) {
       setAvailableItems([]);
       setAvailableTotal(0);
@@ -56,7 +56,13 @@ export default function PluginsView({ scope }: Props) {
     const requestId = ++searchRequestId.current;
     setAvailableLoading(true);
     try {
-      const page = await api.searchAvailablePlugins(availableMarketplace, availableSearch.trim(), offset, PAGE_SIZE);
+      const page = await api.searchAvailablePlugins(
+        availableMarketplace,
+        availableSearch.trim(),
+        offset,
+        PAGE_SIZE,
+        force,
+      );
       if (requestId !== searchRequestId.current) return; // a newer search landed first
       setAvailableItems((prev) => (append ? [...prev, ...page.items] : page.items));
       setAvailableTotal(page.total);
@@ -92,6 +98,23 @@ export default function PluginsView({ scope }: Props) {
     }
   };
 
+  const handleRefreshAll = async () => {
+    setBusy((prev) => new Set(prev).add("refresh-all"));
+    try {
+      await refresh();
+      await runAvailableSearch(0, false, true);
+      toast.success(t.plugins.refreshAllSuccess);
+    } catch (e) {
+      toast.error(String(e));
+    } finally {
+      setBusy((prev) => {
+        const next = new Set(prev);
+        next.delete("refresh-all");
+        return next;
+      });
+    }
+  };
+
   const addMarketplace = () => {
     if (!newSource.trim()) return;
     withBusy(`add-mp-${newSource}`, async () => {
@@ -105,6 +128,17 @@ export default function PluginsView({ scope }: Props) {
   return (
     <div className="h-full overflow-y-auto p-5">
       <div className="max-w-2xl space-y-6">
+        <div className="flex items-center justify-end">
+          <Button
+            size="sm"
+            variant="ghost"
+            disabled={busy.has("refresh-all")}
+            onClick={handleRefreshAll}
+          >
+            {t.plugins.refreshAll}
+          </Button>
+        </div>
+
         <p className="text-xs" style={{ color: "var(--text-muted)" }}>
           {t.plugins.intro}
         </p>
@@ -112,9 +146,6 @@ export default function PluginsView({ scope }: Props) {
         <div>
           <div className="flex items-center justify-between">
             <h2 className="text-sm font-semibold">{t.plugins.marketplacesTitle}</h2>
-            <Button size="sm" variant="ghost" onClick={refresh}>
-              {t.plugins.refresh}
-            </Button>
           </div>
           <div className="flex gap-1 mt-2">
             <TextInput

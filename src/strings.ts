@@ -201,7 +201,8 @@ const en = {
     enable: "Enable",
     disable: "Disable",
     remove: "Remove",
-    refresh: "Refresh",
+    refreshAll: "Refresh everything",
+    refreshAllSuccess: "Refreshed",
   },
   agents: {
     newAgent: "+ New agent",
@@ -639,7 +640,8 @@ const es: typeof en = {
     enable: "Activar",
     disable: "Desactivar",
     remove: "Eliminar",
-    refresh: "Actualizar",
+    refreshAll: "Refrescar todo",
+    refreshAllSuccess: "Actualizado",
   },
   agents: {
     newAgent: "+ Nuevo agente",

@@ -284,10 +284,18 @@ pub fn claude_exec_failed(lang: Lang, err: &str) -> String {
     }
 }
 
-pub fn claude_returned_error(lang: Lang, stderr: &str) -> String {
-    match lang {
-        Lang::En => format!("Claude Code returned an error: {stderr}"),
-        Lang::Es => format!("Claude Code devolvió un error: {stderr}"),
+pub fn claude_returned_error(lang: Lang, stderr: &str, code: i32) -> String {
+    let trimmed = stderr.trim();
+    if trimmed.is_empty() {
+        match lang {
+            Lang::En => format!("Claude Code returned an error (exit code {code}) with no further output."),
+            Lang::Es => format!("Claude Code devolvió un error (código de salida {code}) sin más detalles."),
+        }
+    } else {
+        match lang {
+            Lang::En => format!("Claude Code returned an error: {trimmed}"),
+            Lang::Es => format!("Claude Code devolvió un error: {trimmed}"),
+        }
     }
 }
 
@@ -417,3 +425,23 @@ pub fn command_action_needs_command(lang: Lang) -> String {
         Lang::Es => "El hook necesita un comando a ejecutar.".into(),
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn claude_returned_error_empty_stderr_fallback() {
+        let msg_en = claude_returned_error(Lang::En, "", 42);
+        assert!(msg_en.contains("exit code 42"), "Expected exit code 42 in message: {msg_en}");
+        assert_eq!(msg_en, "Claude Code returned an error (exit code 42) with no further output.");
+
+        let msg_es = claude_returned_error(Lang::Es, "   \n\t", 1);
+        assert!(msg_es.contains("código de salida 1"), "Expected exit code 1 in message: {msg_es}");
+        assert_eq!(msg_es, "Claude Code devolvió un error (código de salida 1) sin más detalles.");
+
+        let msg_non_empty = claude_returned_error(Lang::En, "something broke", 1);
+        assert_eq!(msg_non_empty, "Claude Code returned an error: something broke");
+    }
+}
+

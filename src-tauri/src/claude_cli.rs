@@ -50,5 +50,5 @@ pub fn run_text_command_in(
         return Ok(stdout.trim().to_string());
     }
     let reason = if !stderr.trim().is_empty() { stderr.trim() } else { stdout.trim() };
-    Err(i18n::claude_returned_error(lang, reason))
+    Err(i18n::claude_returned_error(lang, reason, code))
 }
