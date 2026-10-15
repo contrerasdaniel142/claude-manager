@@ -30,7 +30,7 @@ export default function Button({
 }: Props) {
   const sizeClass = size === "sm" ? "px-3 py-1 text-xs" : "px-4 py-1.5 text-sm";
   const shapeClass = variant === "chip" ? "rounded-full" : "rounded-lg";
-  const base = `${shapeClass} font-medium ${sizeClass} ${full ? "w-full" : ""}`;
+  const base = `${shapeClass} font-medium ${sizeClass} ${full ? "w-full" : ""} cursor-pointer disabled:cursor-not-allowed`;
 
   const variantStyle: React.CSSProperties =
     variant === "primary"

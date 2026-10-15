@@ -441,7 +441,7 @@ export default function AgentsView({ scope, onListChanged, refreshSignal, openId
                     key={c}
                     onClick={() => setForm({ ...form, color: form.color === c ? "" : c })}
                     title={c}
-                    className="w-6 h-6 rounded-full"
+                    className="w-6 h-6 rounded-full cursor-pointer"
                     style={{
                       background: COLOR_HEX[c] ?? c,
                       outline: form.color === c ? "2px solid var(--text)" : "none",

@@ -92,7 +92,7 @@ export default function TitleBar({
         <div className="relative">
           <button
             onClick={() => setOpenMenu((v) => (v === "language" ? null : "language"))}
-            className="text-xs px-2 py-0.5 rounded hover:bg-white/10"
+            className="text-xs px-2 py-0.5 rounded hover:bg-white/10 cursor-pointer"
             title={t.app.language}
           >
             {lang.toUpperCase()} ▾
@@ -104,8 +104,8 @@ export default function TitleBar({
                 className="absolute top-8 left-0 z-50 w-24 rounded-lg border shadow-lg text-xs overflow-hidden"
                 style={{ background: "var(--bg-elevated)", borderColor: "var(--border)", color: "var(--text)" }}
               >
-                <button className="w-full text-left px-3 py-2 hover:opacity-80" onClick={() => { setOpenMenu(null); setLang("en"); }}>EN</button>
-                <button className="w-full text-left px-3 py-2 hover:opacity-80" onClick={() => { setOpenMenu(null); setLang("es"); }}>ES</button>
+                <button className="w-full text-left px-3 py-2 hover:opacity-80 cursor-pointer" onClick={() => { setOpenMenu(null); setLang("en"); }}>EN</button>
+                <button className="w-full text-left px-3 py-2 hover:opacity-80 cursor-pointer" onClick={() => { setOpenMenu(null); setLang("es"); }}>ES</button>
               </div>
             </>
           )}
@@ -113,7 +113,7 @@ export default function TitleBar({
         <div className="relative">
           <button
             onClick={() => setOpenMenu((v) => (v === "project" ? null : "project"))}
-            className="text-xs px-2 py-0.5 rounded hover:bg-white/10"
+            className="text-xs px-2 py-0.5 rounded hover:bg-white/10 cursor-pointer"
             title={hasOpenedProject ? projectPath : undefined}
           >
             {hasOpenedProject ? baseName(projectPath) : t.titleBar.noProjectOpen} ▾
@@ -126,7 +126,7 @@ export default function TitleBar({
                 style={{ background: "var(--bg-elevated)", borderColor: "var(--border)", color: "var(--text)" }}
               >
                 <button
-                  className="w-full text-left px-3 py-2 hover:opacity-80"
+                  className="w-full text-left px-3 py-2 hover:opacity-80 cursor-pointer"
                   onClick={() => {
                     setOpenMenu(null);
                     onOpenFolder();
@@ -140,7 +140,7 @@ export default function TitleBar({
                     {recents.map((r) => (
                       <button
                         key={r.path}
-                        className="w-full text-left px-3 py-1.5 hover:opacity-80 truncate block"
+                        className="w-full text-left px-3 py-1.5 hover:opacity-80 truncate block cursor-pointer"
                         title={r.path}
                         onClick={() => {
                           setOpenMenu(null);
@@ -154,7 +154,7 @@ export default function TitleBar({
                 )}
                 <div className="border-t" style={{ borderColor: "var(--border)" }}>
                   <button
-                    className="w-full text-left px-3 py-2 hover:opacity-80"
+                    className="w-full text-left px-3 py-2 hover:opacity-80 cursor-pointer"
                     onClick={() => {
                       setOpenMenu(null);
                       onCheckForUpdates();
@@ -171,19 +171,19 @@ export default function TitleBar({
 
       <div className="flex items-center h-full">
         <button
-          className="w-11 h-full flex items-center justify-center hover:bg-white/10"
+          className="w-11 h-full flex items-center justify-center hover:bg-white/10 cursor-pointer"
           onClick={() => win.minimize()}
         >
           &#x2013;
         </button>
         <button
-          className="w-11 h-full flex items-center justify-center hover:bg-white/10"
+          className="w-11 h-full flex items-center justify-center hover:bg-white/10 cursor-pointer"
           onClick={() => win.toggleMaximize()}
         >
           &#x25A1;
         </button>
         <button
-          className="w-11 h-full flex items-center justify-center hover:bg-[#e81123] hover:text-white"
+          className="w-11 h-full flex items-center justify-center hover:bg-[#e81123] hover:text-white cursor-pointer"
           onClick={() => win.close()}
         >
           &#x2715;

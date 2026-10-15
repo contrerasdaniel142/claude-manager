@@ -43,7 +43,7 @@ export default function WelcomeView({ recents, onOpenFolder, onSwitchTo }: Props
                   key={r.path}
                   title={r.path}
                   onClick={() => onSwitchTo(r.path)}
-                  className="w-full text-left px-3 py-2.5 border-b last:border-b-0 hover:opacity-80 transition-opacity"
+                  className="w-full text-left px-3 py-2.5 border-b last:border-b-0 hover:opacity-80 transition-opacity cursor-pointer"
                   style={{ borderColor: "var(--border)" }}
                 >
                   <div className="text-sm font-medium truncate" style={{ color: "var(--text)" }}>

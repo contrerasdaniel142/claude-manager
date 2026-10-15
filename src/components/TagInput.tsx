@@ -41,7 +41,7 @@ export default function TagInput({ tags, onChange, suggestions, placeholder }: P
             {tag}
             <button
               onClick={() => remove(tag)}
-              className="rounded-full w-4 h-4 inline-flex items-center justify-center hover:opacity-70"
+              className="rounded-full w-4 h-4 inline-flex items-center justify-center hover:opacity-70 cursor-pointer"
               aria-label={t.tagInput.remove(tag)}
             >
               ×
@@ -78,7 +78,7 @@ export default function TagInput({ tags, onChange, suggestions, placeholder }: P
                 e.preventDefault();
                 add(s);
               }}
-              className="w-full text-left px-3 py-1.5 text-sm hover:opacity-80"
+              className="w-full text-left px-3 py-1.5 text-sm hover:opacity-80 cursor-pointer"
               style={{ color: "var(--text)" }}
             >
               {s}

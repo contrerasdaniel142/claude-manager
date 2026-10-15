@@ -15,7 +15,7 @@ export default function Select({ compact = false, className = "", style, childre
   return (
     <select
       {...props}
-      className={`${sizeClass} rounded-lg border ${className}`}
+      className={`${sizeClass} rounded-lg border ${className} cursor-pointer`}
       style={{ borderColor: "var(--border)", ...style }}
     >
       {children}

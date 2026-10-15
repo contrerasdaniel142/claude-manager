@@ -28,7 +28,7 @@ export default function StatusBar({ scope, problems, onNavigate }: Props) {
       {problems.length > 0 && (
         <button
           onClick={() => setOpen((v) => !v)}
-          className="flex items-center gap-1 hover:opacity-80"
+          className="flex items-center gap-1 hover:opacity-80 cursor-pointer"
           style={{ color: "var(--warning)" }}
         >
           <span>&#9888;</span>
@@ -46,7 +46,7 @@ export default function StatusBar({ scope, problems, onNavigate }: Props) {
             {problems.map((p, i) => (
               <button
                 key={i}
-                className="w-full text-left px-3 py-2 border-b hover:opacity-80 block"
+                className="w-full text-left px-3 py-2 border-b hover:opacity-80 block cursor-pointer"
                 style={{ borderColor: "var(--border)" }}
                 onClick={() => {
                   setOpen(false);

@@ -433,6 +433,8 @@ const en = {
       "This skill's source repository seems to have been removed from GitHub since skills.sh indexed it. Only the description could be recovered.",
     previewFailedInstallHint:
       "Install is a separate request and may still work — but if the repo is really gone, it'll fail the same way.",
+    openInSkillsSh: "Open in skills.sh",
+    securityLabel: "Security audits",
   },
   boolSelect: {
     unset: "(unset)",
@@ -878,6 +880,8 @@ const es: typeof en = {
       "El repositorio de origen de este skill parece haber sido eliminado de GitHub desde que skills.sh lo indexó. Solo se pudo recuperar la descripción.",
     previewFailedInstallHint:
       "Instalar es un pedido aparte y puede igual funcionar — pero si el repo ya no existe, va a fallar de la misma forma.",
+    openInSkillsSh: "Ver en skills.sh",
+    securityLabel: "Auditorías de seguridad",
   },
   boolSelect: {
     unset: "(sin definir)",

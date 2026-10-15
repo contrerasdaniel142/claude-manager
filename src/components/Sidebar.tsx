@@ -100,7 +100,7 @@ export default function Sidebar({
         <div className="flex rounded-lg overflow-hidden border border-white/10 text-sm">
           <button
             onClick={() => setScope("project")}
-            className="flex-1 py-1.5 transition-colors"
+            className="flex-1 py-1.5 transition-colors cursor-pointer"
             style={{
               background: scope === "project" ? "var(--accent)" : "transparent",
               color: scope === "project" ? "white" : "#c7c7d1",
@@ -111,7 +111,7 @@ export default function Sidebar({
           </button>
           <button
             onClick={() => setScope("global")}
-            className="flex-1 py-1.5 transition-colors"
+            className="flex-1 py-1.5 transition-colors cursor-pointer"
             style={{
               background: scope === "global" ? "var(--accent)" : "transparent",
               color: scope === "global" ? "white" : "#c7c7d1",
@@ -135,7 +135,7 @@ export default function Sidebar({
               key={c.id}
               disabled={disabled}
               onClick={() => setCategory(c.id)}
-              className={`w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm transition-colors${disabled ? " opacity-40 cursor-not-allowed" : ""}`}
+              className={`w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm transition-colors cursor-pointer${disabled ? " opacity-40 cursor-not-allowed" : ""}`}
               style={{
                 background: active ? "rgba(124,92,255,0.18)" : "transparent",
                 color: active ? "#fff" : "#c7c7d1",

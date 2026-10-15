@@ -87,6 +87,78 @@ fn install_marketplace_skill_impl(
 }
 
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
+pub struct SecurityAudit {
+    pub name: String,
+    pub verdict: String,
+}
+
+fn extract_security_audits(html: &str) -> Vec<SecurityAudit> {
+    let marker = "Security Audits";
+    let marker_pos = match html.find(marker) {
+        Some(pos) => pos + marker.len(),
+        None => return Vec::new(),
+    };
+    let mut rest = &html[marker_pos..];
+
+    let mut audits = Vec::new();
+    while let Some(a_pos) = rest.find("<a ") {
+        rest = &rest[a_pos..];
+        let a_end = match rest.find("</a>") {
+            Some(pos) => pos,
+            None => break,
+        };
+        let a_block = &rest[..a_end];
+        rest = &rest[a_end + 4..];
+
+        let name_marker = "text-sm font-medium";
+        let name_idx = match a_block.find(name_marker) {
+            Some(idx) => idx + name_marker.len(),
+            None => continue,
+        };
+        let after_name_marker = &a_block[name_idx..];
+        let name_start = match after_name_marker.find('>') {
+            Some(idx) => idx + 1,
+            None => continue,
+        };
+        let name_content = &after_name_marker[name_start..];
+        let name_end = match name_content.find("</span>") {
+            Some(idx) => idx,
+            None => continue,
+        };
+        let name = name_content[..name_end].trim().to_string();
+
+        let after_name_span = &after_name_marker[name_start + name_end + 7..];
+        let verdict_marker = "text-xs font-mono uppercase";
+        let verdict_idx = match after_name_span.find(verdict_marker) {
+            Some(idx) => idx + verdict_marker.len(),
+            None => continue,
+        };
+        let after_verdict_marker = &after_name_span[verdict_idx..];
+        let verdict_start = match after_verdict_marker.find('>') {
+            Some(idx) => idx + 1,
+            None => continue,
+        };
+        let verdict_content = &after_verdict_marker[verdict_start..];
+        let verdict_end = match verdict_content.find("</span>") {
+            Some(idx) => idx,
+            None => continue,
+        };
+        let verdict = verdict_content[..verdict_end].trim().to_string();
+
+        if !name.is_empty() && !verdict.is_empty() {
+            audits.push(SecurityAudit { name, verdict });
+        }
+    }
+
+    audits
+}
+
+fn fetch_skills_sh_page(source: &str, skill_id: &str) -> Option<String> {
+    let url = format!("https://www.skills.sh/{source}/{skill_id}");
+    ureq::get(&url).call().ok()?.into_string().ok()
+}
+
+#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 pub struct MarketplaceSkillPreview {
     pub description: String,
     pub when_to_use: String,
@@ -94,6 +166,8 @@ pub struct MarketplaceSkillPreview {
     /// True means the GitHub source is gone and only the description was
     /// recovered from skills.sh; when_to_use and body are empty in that case.
     pub source_gone: bool,
+    /// Best-effort security audit verdicts scraped from skills.sh; empty when unavailable.
+    pub security_audits: Vec<SecurityAudit>,
 }
 
 fn find_path_in_tree(tree_body: &str, skill_id: &str) -> Option<String> {
@@ -125,12 +199,6 @@ fn extract_skills_sh_description(html: &str) -> Option<String> {
     Some(decoded)
 }
 
-fn fetch_skills_sh_description(source: &str, skill_id: &str) -> Option<String> {
-    let url = format!("https://www.skills.sh/{source}/{skill_id}");
-    let body = ureq::get(&url).call().ok()?.into_string().ok()?;
-    extract_skills_sh_description(&body)
-}
-
 fn is_repo_gone(err: &ureq::Error) -> bool {
     matches!(err, ureq::Error::Status(404, _))
 }
@@ -156,13 +224,17 @@ fn github_error(lang: Lang, source: &str, err: ureq::Error) -> String {
 fn preview_marketplace_skill_impl(lang: Lang, source: &str, skill_id: &str) -> Result<MarketplaceSkillPreview, String> {
     let fallback = |e: ureq::Error| -> Result<MarketplaceSkillPreview, String> {
         if is_repo_gone(&e) {
-            if let Some(description) = fetch_skills_sh_description(source, skill_id) {
-                return Ok(MarketplaceSkillPreview {
-                    description,
-                    when_to_use: String::new(),
-                    body: String::new(),
-                    source_gone: true,
-                });
+            if let Some(page) = fetch_skills_sh_page(source, skill_id) {
+                if let Some(description) = extract_skills_sh_description(&page) {
+                    let security_audits = extract_security_audits(&page);
+                    return Ok(MarketplaceSkillPreview {
+                        description,
+                        when_to_use: String::new(),
+                        body: String::new(),
+                        source_gone: true,
+                        security_audits,
+                    });
+                }
             }
         }
         Err(github_error(lang, source, e))
@@ -190,11 +262,16 @@ fn preview_marketplace_skill_impl(lang: Lang, source: &str, skill_id: &str) -> R
 
     let (yaml, body) = crate::fsutil::split_frontmatter(&raw);
     let fm: crate::models::SkillFrontmatter = yaml.as_deref().and_then(|y| serde_yaml::from_str(y).ok()).unwrap_or_default();
+    let security_audits = fetch_skills_sh_page(source, skill_id)
+        .map(|page| extract_security_audits(&page))
+        .unwrap_or_default();
+
     Ok(MarketplaceSkillPreview {
         description: fm.description.unwrap_or_default(),
         when_to_use: fm.when_to_use.unwrap_or_default(),
         body,
         source_gone: false,
+        security_audits,
     })
 }
 
@@ -318,5 +395,66 @@ mod tests {
         let resp_500 = ureq::Response::new(500, "Internal Server Error", "{}").unwrap();
         let err_500 = ureq::Error::Status(500, resp_500);
         assert!(!is_repo_gone(&err_500));
+    }
+
+    #[test]
+    fn extract_security_audits_parses_pass_and_warn_verdicts() {
+        let html = r#"
+<div class="text-sm font-mono uppercase text-white mb-3">Security Audits</div>
+<div class="divide-y divide-border">
+  <a class="block py-2 hover:bg-muted/40 -mx-3 px-3 rounded transition-colors border-0" href="/anthropics/skills/pdf/security/agent-trust-hub">
+    <div class="flex items-center justify-between mb-1">
+      <span class="text-sm font-medium text-foreground truncate">Gen Agent Trust Hub</span>
+      <span class="text-xs font-mono uppercase px-2 py-1 rounded bg-green-500/10 text-green-500">Pass</span>
+    </div>
+  </a>
+  <a class="block py-2 hover:bg-muted/40 -mx-3 px-3 rounded transition-colors border-0" href="/anthropics/skills/pdf/security/snyk">
+    <div class="flex items-center justify-between mb-1">
+      <span class="text-sm font-medium text-foreground truncate">Snyk</span>
+      <span class="text-xs font-mono uppercase px-2 py-1 rounded bg-amber-500/10 text-amber-500">Warn</span>
+    </div>
+  </a>
+</div>
+"#;
+        let audits = extract_security_audits(html);
+        assert_eq!(
+            audits,
+            vec![
+                SecurityAudit {
+                    name: "Gen Agent Trust Hub".to_string(),
+                    verdict: "Pass".to_string(),
+                },
+                SecurityAudit {
+                    name: "Snyk".to_string(),
+                    verdict: "Warn".to_string(),
+                },
+            ]
+        );
+    }
+
+    #[test]
+    fn extract_security_audits_returns_empty_when_section_absent() {
+        let html = "<div>No audits here</div>";
+        assert_eq!(extract_security_audits(html), Vec::new());
+    }
+
+    #[test]
+    fn extract_security_audits_does_not_panic_on_truncated_block() {
+        let test_cases = vec![
+            "Security Audits",
+            "Security Audits <div",
+            "Security Audits <a href=\"foo\">",
+            "Security Audits <a class=\"foo\"><span class=\"text-sm font-medium\">Truncated",
+            "Security Audits <a class=\"foo\"><span class=\"text-sm font-medium\">Name</span><span class=\"text-xs font-mono uppercase\"></a>",
+            "Security Audits <a class=\"foo\"><span class=\"text-sm font-medium\">   </span><span class=\"text-xs font-mono uppercase\">Pass</span></a>",
+            "Security Audits <a class=\"foo\"><span class=\"text-sm font-medium\">Name</span><span class=\"text-xs font-mono uppercase\">   </span></a>",
+        ];
+        for html in test_cases {
+            let res = extract_security_audits(html);
+            for entry in res {
+                assert!(!entry.name.trim().is_empty());
+                assert!(!entry.verdict.trim().is_empty());
+            }
+        }
     }
 }

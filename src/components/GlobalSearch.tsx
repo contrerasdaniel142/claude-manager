@@ -90,7 +90,7 @@ export default function GlobalSearch({ open, scope, onClose, onOpenResult }: Pro
           {results.map((r, i) => (
             <button
               key={`${r.category}-${r.id}`}
-              className="w-full text-left px-3 py-2 text-sm block"
+              className="w-full text-left px-3 py-2 text-sm block cursor-pointer"
               style={{ background: i === activeIndex ? "var(--accent-soft)" : "transparent" }}
               onMouseEnter={() => setActiveIndex(i)}
               onClick={() => openAt(i)}

@@ -13,7 +13,7 @@ export default function ListRow({ active, onClick, title, subtitle }: Props) {
   return (
     <button
       onClick={onClick}
-      className="w-full text-left px-3 py-2 border-b"
+      className="w-full text-left px-3 py-2 border-b cursor-pointer"
       style={{ borderColor: "var(--border)", background: active ? "var(--accent-soft)" : "transparent" }}
     >
       <div className="text-sm font-medium flex items-center gap-1.5 truncate">{title}</div>

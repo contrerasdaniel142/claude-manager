@@ -305,6 +305,7 @@ export interface MarketplaceSkillPreview {
   when_to_use: string;
   body: string;
   source_gone: boolean;
+  security_audits: { name: string; verdict: string }[];
 }
 
 export type Category =

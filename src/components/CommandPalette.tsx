@@ -75,7 +75,7 @@ export default function CommandPalette({ open, onClose, commands, placeholder }:
           {filtered.map((c, i) => (
             <button
               key={c.id}
-              className="w-full text-left px-3 py-2 text-sm flex items-center justify-between gap-3"
+              className="w-full text-left px-3 py-2 text-sm flex items-center justify-between gap-3 cursor-pointer"
               style={{
                 background: i === activeIndex ? "var(--accent-soft)" : "transparent",
                 color: i === activeIndex ? "var(--accent)" : "var(--text)",

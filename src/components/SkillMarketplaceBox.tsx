@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import ReactMarkdown from "react-markdown";
+import { openUrl } from "@tauri-apps/plugin-opener";
 import { api } from "../api";
 import type { MarketplaceSkillPreview, MarketplaceSkillSummary, Scope } from "../types";
 import Button from "./Button";
@@ -176,6 +177,48 @@ export default function SkillMarketplaceBox({ scope, localNames, onInstalled }: 
                     {preview && (
                       <div className="space-y-2">
                         {preview.description && <p className="text-sm">{preview.description}</p>}
+                        <div>
+                          <Button
+                            size="sm"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              openUrl(`https://www.skills.sh/${item.source}/${item.skill_id}`);
+                            }}
+                          >
+                            {t.skillMarketplace.openInSkillsSh}
+                          </Button>
+                        </div>
+                        {preview.security_audits.length > 0 && (
+                          <div className="space-y-1">
+                            <span className="text-xs" style={{ color: "var(--text-muted)" }}>
+                              {t.skillMarketplace.securityLabel}
+                            </span>
+                            <div className="flex flex-wrap gap-1.5 items-center">
+                              {preview.security_audits.map((audit, idx) => {
+                                const v = audit.verdict.trim().toLowerCase();
+                                const colorVar =
+                                  v === "pass"
+                                    ? "var(--ok)"
+                                    : v === "warn"
+                                    ? "var(--warning)"
+                                    : "var(--danger)";
+                                return (
+                                  <span
+                                    key={idx}
+                                    className="inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-[11px]"
+                                    style={{
+                                      color: colorVar,
+                                      border: `1px solid ${colorVar}`,
+                                    }}
+                                  >
+                                    <span>{audit.name}</span>
+                                    <span>{audit.verdict}</span>
+                                  </span>
+                                );
+                              })}
+                            </div>
+                          </div>
+                        )}
                         {preview.source_gone ? (
                           <p className="text-[11px]" style={{ color: "var(--text-muted)" }}>
                             {t.skillMarketplace.sourceGoneNote}

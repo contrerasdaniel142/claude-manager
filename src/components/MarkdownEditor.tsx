@@ -28,7 +28,7 @@ export default function MarkdownEditor({
             <button
               key={tabKey}
               onClick={() => setTab(tabKey)}
-              className="px-3 py-1.5 capitalize"
+              className="px-3 py-1.5 capitalize cursor-pointer"
               style={{
                 borderBottom: tab === tabKey ? "2px solid var(--accent)" : "2px solid transparent",
                 color: tab === tabKey ? "var(--text)" : "var(--text-muted)",
