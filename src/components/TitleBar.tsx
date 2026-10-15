@@ -40,6 +40,16 @@ export function pushRecent(path: string): RecentProject[] {
   return updated;
 }
 
+export function removeRecent(path: string): RecentProject[] {
+  const updated = loadRecents().filter((r) => r.path !== path);
+  try {
+    localStorage.setItem(RECENTS_KEY, JSON.stringify(updated));
+  } catch {
+    // per-viewer convenience only — if it can't save, the menu just won't remember it.
+  }
+  return updated;
+}
+
 interface Props {
   projectPath: string;
   hasOpenedProject: boolean;

@@ -170,6 +170,7 @@ const en = {
     checkForUpdates: "Check for Updates...",
     noUpdates: "You're on the latest build.",
     switchedToast: (name: string) => `Switched to ${name}.`,
+    restoreFailedToast: (name: string) => `Couldn't reopen "${name}" — it may have been moved or deleted.`,
   },
   welcome: {
     description:
@@ -622,6 +623,7 @@ const es: typeof en = {
     checkForUpdates: "Buscar actualizaciones...",
     noUpdates: "Ya tienes la última versión.",
     switchedToast: (name: string) => `Cambiaste a ${name}.`,
+    restoreFailedToast: (name: string) => `No se pudo reabrir "${name}" — puede haberse movido o eliminado.`,
   },
   welcome: {
     description:

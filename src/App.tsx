@@ -18,7 +18,7 @@ import PluginsView from "./components/PluginsView";
 import RulesView from "./components/RulesView";
 import LanguageProvider, { useLanguage } from "./components/LanguageProvider";
 import StatusBar, { type ProblemItem } from "./components/StatusBar";
-import TitleBar, { getLastProject, loadRecents, pushRecent, baseName, type RecentProject } from "./components/TitleBar";
+import TitleBar, { getLastProject, loadRecents, pushRecent, removeRecent, baseName, type RecentProject } from "./components/TitleBar";
 import ToastProvider, { useToast } from "./components/ToastProvider";
 import WelcomeView from "./components/WelcomeView";
 import { open } from "@tauri-apps/plugin-dialog";
@@ -246,7 +246,9 @@ function AppContent() {
           setRefreshSignal((n) => n + 1);
         })
         .catch(() => {
-          // Folder may have been moved or deleted since last session
+          // Folder was moved or deleted since last session — drop the stale recent and tell the user.
+          setRecents(removeRecent(last));
+          toast.error(t.titleBar.restoreFailedToast(baseName(last)));
         });
     });
   }, []);
