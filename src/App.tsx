@@ -18,7 +18,7 @@ import PluginsView from "./components/PluginsView";
 import RulesView from "./components/RulesView";
 import LanguageProvider, { useLanguage } from "./components/LanguageProvider";
 import StatusBar, { type ProblemItem } from "./components/StatusBar";
-import TitleBar from "./components/TitleBar";
+import TitleBar, { getLastProject } from "./components/TitleBar";
 import ToastProvider, { useToast } from "./components/ToastProvider";
 import type { Category, Scope } from "./types";
 
@@ -51,6 +51,7 @@ function AppContent() {
   const { t } = useLanguage();
   const toast = useToast();
   const updateChecked = useRef(false);
+  const restoreAttempted = useRef(false);
   const [paletteOpen, setPaletteOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
   const [openTarget, setOpenTarget] = useState<{ category: Category; id: string } | null>(null);
@@ -159,57 +160,82 @@ function AppContent() {
     ];
   }, [t]);
 
+  const runUpdateCheck = async (opts: { silent: boolean }) => {
+    try {
+      const update = await check();
+      if (!update) {
+        if (!opts.silent) {
+          toast.success(t.titleBar.noUpdates);
+        }
+        return;
+      }
+
+      let installing = false;
+      let toastId: number | null = null;
+      const msg = t.updater.available.replace("{version}", update.version);
+
+      const showUpdateToast = () => {
+        const options = {
+          sticky: true,
+          action: {
+            label: installing ? t.updater.installing : t.updater.install,
+            disabled: installing,
+            onClick: async () => {
+              if (installing) return;
+              installing = true;
+              showUpdateToast();
+              try {
+                await update.downloadAndInstall();
+                await relaunch();
+              } catch (err) {
+                installing = false;
+                showUpdateToast();
+                toast.error(String(err));
+              }
+            },
+          },
+        };
+
+        if (toastId === null) {
+          toastId = toast.info(msg, options);
+        } else {
+          toast.update(toastId, msg, options);
+        }
+      };
+
+      showUpdateToast();
+    } catch (err) {
+      if (opts.silent) {
+        console.warn("Update check failed:", err);
+      } else {
+        toast.error(String(err));
+      }
+    }
+  };
+
   useEffect(() => {
-    api.getRoots().then(setRoots);
+    api.getRoots().then((r) => {
+      setRoots(r);
+      if (restoreAttempted.current) return;
+      restoreAttempted.current = true;
+      const last = getLastProject();
+      if (!last || last === r.project) return;
+      api
+        .setProjectRoot(last)
+        .then(() => {
+          setRoots((prev) => ({ ...prev, project: last }));
+          setRefreshSignal((n) => n + 1);
+        })
+        .catch(() => {
+          // Folder may have been moved or deleted since last session
+        });
+    });
   }, []);
 
   useEffect(() => {
     if (updateChecked.current) return;
     updateChecked.current = true;
-
-    (async () => {
-      try {
-        const update = await check();
-        if (!update) return;
-
-        let installing = false;
-        let toastId: number | null = null;
-        const msg = t.updater.available.replace("{version}", update.version);
-
-        const showUpdateToast = () => {
-          const options = {
-            sticky: true,
-            action: {
-              label: installing ? t.updater.installing : t.updater.install,
-              disabled: installing,
-              onClick: async () => {
-                if (installing) return;
-                installing = true;
-                showUpdateToast();
-                try {
-                  await update.downloadAndInstall();
-                  await relaunch();
-                } catch (err) {
-                  installing = false;
-                  showUpdateToast();
-                  toast.error(String(err));
-                }
-              },
-            },
-          };
-
-          if (toastId === null) {
-            toastId = toast.info(msg, options);
-          } else {
-            toast.update(toastId, msg, options);
-          }
-        };
-
-        showUpdateToast();
-      } catch (err) {
-        console.warn("Update check failed:", err);
-      }
-    })();
+    runUpdateCheck({ silent: true });
   }, []);
 
   // Un archivo tocado por fuera de la app (editado a mano, git pull, otra
@@ -299,6 +325,7 @@ function AppContent() {
           setRoots((r) => ({ ...r, project: path }));
           setRefreshSignal((n) => n + 1);
         }}
+        onCheckForUpdates={() => runUpdateCheck({ silent: false })}
       />
     <div className="flex flex-1 overflow-hidden">
       <Sidebar

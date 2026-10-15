@@ -26,6 +26,10 @@ function loadRecents(): RecentProject[] {
   }
 }
 
+export function getLastProject(): string | null {
+  return loadRecents()[0]?.path ?? null;
+}
+
 function pushRecent(path: string): RecentProject[] {
   const updated = [{ path, name: baseName(path) }, ...loadRecents().filter((r) => r.path !== path)].slice(
     0,
@@ -42,11 +46,12 @@ function pushRecent(path: string): RecentProject[] {
 interface Props {
   projectPath: string;
   onProjectChanged: (path: string) => void;
+  onCheckForUpdates: () => void;
 }
 
 const win = getCurrentWindow();
 
-export default function TitleBar({ projectPath, onProjectChanged }: Props) {
+export default function TitleBar({ projectPath, onProjectChanged, onCheckForUpdates }: Props) {
   const [menuOpen, setMenuOpen] = useState(false);
 
   useEffect(() => {
@@ -125,7 +130,7 @@ export default function TitleBar({ projectPath, onProjectChanged }: Props) {
                 className="w-full text-left px-3 py-2 hover:opacity-80"
                 onClick={() => {
                   setMenuOpen(false);
-                  toast.success(t.titleBar.noUpdates);
+                  onCheckForUpdates();
                 }}
               >
                 {t.titleBar.checkForUpdates}
