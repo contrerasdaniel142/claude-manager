@@ -28,6 +28,8 @@ jobs:
     runs-on: ${{ matrix.platform }}
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - uses: actions/setup-node@v4
         with:
@@ -46,6 +48,27 @@ jobs:
 
       - run: npm ci
 
+      # This repo takes commits directly to master (no PRs), so GitHub's own
+      # generateReleaseNotes (PR-based) comes back with nothing to list — a
+      # plain commit-message changelog since the previous tag actually
+      # reflects how this project ships.
+      - name: Build changelog from commit messages
+        id: changelog
+        shell: bash
+        run: |
+          PREV_TAG=$(git describe --tags --abbrev=0 "${{ github.ref_name }}^" 2>/dev/null || echo "")
+          if [ -n "$PREV_TAG" ]; then
+            RANGE="$PREV_TAG..${{ github.ref_name }}"
+          else
+            RANGE="${{ github.ref_name }}"
+          fi
+          {
+            echo "notes<<CHANGELOG_EOF"
+            git log --pretty=format:"- %s" "$RANGE"
+            echo ""
+            echo "CHANGELOG_EOF"
+          } >> "$GITHUB_OUTPUT"
+
       - uses: tauri-apps/tauri-action@v0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -53,6 +76,7 @@ jobs:
         with:
           tagName: ${{ github.ref_name }}
           releaseName: "Claude Manager ${{ github.ref_name }}"
+          releaseBody: ${{ steps.changelog.outputs.notes }}
           releaseDraft: true
           prerelease: false
           generateReleaseNotes: true
