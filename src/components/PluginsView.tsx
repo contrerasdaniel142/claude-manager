@@ -42,7 +42,7 @@ export default function PluginsView({ scope }: Props) {
   const searchRequestId = useRef(0);
 
   const refresh = async () => {
-    const attempts = [0, 800, 1600];
+    const attempts = [0, 1000, 2000, 3000, 4000];
     let lastErr: unknown;
     for (let i = 0; i < attempts.length; i++) {
       if (attempts[i] > 0) await new Promise((r) => setTimeout(r, attempts[i]));
