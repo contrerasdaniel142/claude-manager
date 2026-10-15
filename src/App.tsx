@@ -360,6 +360,7 @@ function AppContent() {
         invalidCounts={invalidCounts}
         projectRoot={roots.project}
         globalRoot={roots.global}
+        disabled={!hasOpenedProject && scope === "project"}
       />
       <main className="flex-1 overflow-hidden" style={{ background: "var(--bg)" }}>
         {!hasOpenedProject && scope === "project" ? (

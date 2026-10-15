@@ -11,6 +11,7 @@ interface Props {
   invalidCounts: Record<Category, number>;
   projectRoot: string;
   globalRoot: string;
+  disabled: boolean;
 }
 
 const WIDTH_KEY = "clman-sidebar-width";
@@ -40,6 +41,7 @@ export default function Sidebar({
   invalidCounts,
   projectRoot,
   globalRoot,
+  disabled,
 }: Props) {
   const { t } = useLanguage();
   const [width, setWidth] = useState(loadWidth);
@@ -131,8 +133,9 @@ export default function Sidebar({
           return (
             <button
               key={c.id}
+              disabled={disabled}
               onClick={() => setCategory(c.id)}
-              className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm transition-colors"
+              className={`w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm transition-colors${disabled ? " opacity-40 cursor-not-allowed" : ""}`}
               style={{
                 background: active ? "rgba(124,92,255,0.18)" : "transparent",
                 color: active ? "#fff" : "#c7c7d1",
