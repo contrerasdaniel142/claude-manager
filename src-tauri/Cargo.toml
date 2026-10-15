@@ -1,6 +1,6 @@
 [package]
 name = "clman"
-version = "0.1.1"
+version = "0.1.2"
 description = "Visual manager for Claude Code steering docs, hooks, agents and skills"
 authors = ["Daniel"]
 edition = "2024"
