@@ -55,5 +55,6 @@ jobs:
           releaseName: "Claude Manager ${{ github.ref_name }}"
           releaseDraft: true
           prerelease: false
+          generateReleaseNotes: true
           args: ${{ matrix.args }}
           includeUpdaterJson: true
