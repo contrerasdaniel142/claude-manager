@@ -342,6 +342,7 @@ function AppContent() {
       />
       <TitleBar
         projectPath={roots.project}
+        hasOpenedProject={hasOpenedProject}
         recents={recents}
         onOpenFolder={openFolder}
         onSwitchTo={switchTo}

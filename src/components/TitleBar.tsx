@@ -42,6 +42,7 @@ export function pushRecent(path: string): RecentProject[] {
 
 interface Props {
   projectPath: string;
+  hasOpenedProject: boolean;
   recents: RecentProject[];
   onOpenFolder: () => void;
   onSwitchTo: (path: string) => void;
@@ -52,6 +53,7 @@ const win = getCurrentWindow();
 
 export default function TitleBar({
   projectPath,
+  hasOpenedProject,
   recents,
   onOpenFolder,
   onSwitchTo,
@@ -102,9 +104,9 @@ export default function TitleBar({
           <button
             onClick={() => setOpenMenu((v) => (v === "project" ? null : "project"))}
             className="text-xs px-2 py-0.5 rounded hover:bg-white/10"
-            title={projectPath}
+            title={hasOpenedProject ? projectPath : undefined}
           >
-            {baseName(projectPath)} ▾
+            {hasOpenedProject ? baseName(projectPath) : t.titleBar.noProjectOpen} ▾
           </button>
           {openMenu === "project" && (
             <>

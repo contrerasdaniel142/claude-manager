@@ -166,6 +166,7 @@ const en = {
   titleBar: {
     openFolder: "Open Folder...",
     recent: "Recent",
+    noProjectOpen: "No project open",
     checkForUpdates: "Check for Updates...",
     noUpdates: "You're on the latest build.",
     switchedToast: (name: string) => `Switched to ${name}.`,
@@ -617,6 +618,7 @@ const es: typeof en = {
   titleBar: {
     openFolder: "Abrir carpeta...",
     recent: "Recientes",
+    noProjectOpen: "Sin proyecto abierto",
     checkForUpdates: "Buscar actualizaciones...",
     noUpdates: "Ya tienes la última versión.",
     switchedToast: (name: string) => `Cambiaste a ${name}.`,
