@@ -1,8 +1,6 @@
 import { useRef, useState } from "react";
 import type { Category, Scope } from "../types";
 import { useLanguage } from "./LanguageProvider";
-import Select from "./Select";
-import type { Lang } from "../strings";
 
 interface Props {
   scope: Scope;
@@ -43,7 +41,7 @@ export default function Sidebar({
   projectRoot,
   globalRoot,
 }: Props) {
-  const { lang, setLang, t } = useLanguage();
+  const { t } = useLanguage();
   const [width, setWidth] = useState(loadWidth);
   const widthRef = useRef(width);
 
@@ -94,10 +92,6 @@ export default function Sidebar({
           <div className="text-lg font-semibold tracking-tight">{t.app.title}</div>
           <div className="text-xs opacity-50 mt-0.5">{t.app.subtitle}</div>
         </div>
-        <Select value={lang} onChange={(e) => setLang(e.target.value as Lang)} title={t.app.language} compact>
-          <option value="en">EN</option>
-          <option value="es">ES</option>
-        </Select>
       </div>
 
       <div className="px-3 pt-3">

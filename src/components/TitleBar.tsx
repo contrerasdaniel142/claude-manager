@@ -57,17 +57,17 @@ export default function TitleBar({
   onSwitchTo,
   onCheckForUpdates,
 }: Props) {
-  const [menuOpen, setMenuOpen] = useState(false);
+  const [openMenu, setOpenMenu] = useState<"project" | "language" | null>(null);
 
   useEffect(() => {
-    if (!menuOpen) return;
+    if (!openMenu) return;
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") setMenuOpen(false);
+      if (e.key === "Escape") setOpenMenu(null);
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [menuOpen]);
-  const { t } = useLanguage();
+  }, [openMenu]);
+  const { lang, setLang, t } = useLanguage();
 
   return (
     <div
@@ -78,17 +78,38 @@ export default function TitleBar({
       <div className="flex items-center gap-2 px-3 h-full">
         <span className="text-xs font-medium opacity-70">{t.app.title}</span>
         <button
-          onClick={() => setMenuOpen((v) => !v)}
+          onClick={() => setOpenMenu((v) => (v === "project" ? null : "project"))}
           className="text-xs px-2 py-0.5 rounded hover:bg-white/10"
           title={projectPath}
         >
           {baseName(projectPath)} ▾
         </button>
+        <div className="relative">
+          <button
+            onClick={() => setOpenMenu((v) => (v === "language" ? null : "language"))}
+            className="text-xs px-2 py-0.5 rounded hover:bg-white/10"
+            title={t.app.language}
+          >
+            {lang.toUpperCase()} ▾
+          </button>
+          {openMenu === "language" && (
+            <>
+              <div className="fixed inset-0 z-40" onClick={() => setOpenMenu(null)} />
+              <div
+                className="absolute top-8 left-0 z-50 w-24 rounded-lg border shadow-lg text-xs overflow-hidden"
+                style={{ background: "var(--bg-elevated)", borderColor: "var(--border)", color: "var(--text)" }}
+              >
+                <button className="w-full text-left px-3 py-2 hover:opacity-80" onClick={() => { setOpenMenu(null); setLang("en"); }}>EN</button>
+                <button className="w-full text-left px-3 py-2 hover:opacity-80" onClick={() => { setOpenMenu(null); setLang("es"); }}>ES</button>
+              </div>
+            </>
+          )}
+        </div>
       </div>
 
-      {menuOpen && (
+      {openMenu === "project" && (
         <>
-          <div className="fixed inset-0 z-40" onClick={() => setMenuOpen(false)} />
+          <div className="fixed inset-0 z-40" onClick={() => setOpenMenu(null)} />
           <div
             className="absolute top-8 left-16 z-50 w-64 rounded-lg border shadow-lg text-xs overflow-hidden"
             style={{ background: "var(--bg-elevated)", borderColor: "var(--border)", color: "var(--text)" }}
@@ -96,7 +117,7 @@ export default function TitleBar({
             <button
               className="w-full text-left px-3 py-2 hover:opacity-80"
               onClick={() => {
-                setMenuOpen(false);
+                setOpenMenu(null);
                 onOpenFolder();
               }}
             >
@@ -111,7 +132,7 @@ export default function TitleBar({
                     className="w-full text-left px-3 py-1.5 hover:opacity-80 truncate block"
                     title={r.path}
                     onClick={() => {
-                      setMenuOpen(false);
+                      setOpenMenu(null);
                       onSwitchTo(r.path);
                     }}
                   >
@@ -124,7 +145,7 @@ export default function TitleBar({
               <button
                 className="w-full text-left px-3 py-2 hover:opacity-80"
                 onClick={() => {
-                  setMenuOpen(false);
+                  setOpenMenu(null);
                   onCheckForUpdates();
                 }}
               >
