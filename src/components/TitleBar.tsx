@@ -77,13 +77,6 @@ export default function TitleBar({
     >
       <div className="flex items-center gap-2 px-3 h-full">
         <span className="text-xs font-medium opacity-70">{t.app.title}</span>
-        <button
-          onClick={() => setOpenMenu((v) => (v === "project" ? null : "project"))}
-          className="text-xs px-2 py-0.5 rounded hover:bg-white/10"
-          title={projectPath}
-        >
-          {baseName(projectPath)} ▾
-        </button>
         <div className="relative">
           <button
             onClick={() => setOpenMenu((v) => (v === "language" ? null : "language"))}
@@ -105,56 +98,64 @@ export default function TitleBar({
             </>
           )}
         </div>
-      </div>
-
-      {openMenu === "project" && (
-        <>
-          <div className="fixed inset-0 z-40" onClick={() => setOpenMenu(null)} />
-          <div
-            className="absolute top-8 left-16 z-50 w-64 rounded-lg border shadow-lg text-xs overflow-hidden"
-            style={{ background: "var(--bg-elevated)", borderColor: "var(--border)", color: "var(--text)" }}
+        <div className="relative">
+          <button
+            onClick={() => setOpenMenu((v) => (v === "project" ? null : "project"))}
+            className="text-xs px-2 py-0.5 rounded hover:bg-white/10"
+            title={projectPath}
           >
-            <button
-              className="w-full text-left px-3 py-2 hover:opacity-80"
-              onClick={() => {
-                setOpenMenu(null);
-                onOpenFolder();
-              }}
-            >
-              {t.titleBar.openFolder}
-            </button>
-            {recents.length > 0 && (
-              <div className="border-t" style={{ borderColor: "var(--border)" }}>
-                <div className="px-3 py-1 opacity-50">{t.titleBar.recent}</div>
-                {recents.map((r) => (
+            {baseName(projectPath)} ▾
+          </button>
+          {openMenu === "project" && (
+            <>
+              <div className="fixed inset-0 z-40" onClick={() => setOpenMenu(null)} />
+              <div
+                className="absolute top-8 left-0 z-50 w-64 rounded-lg border shadow-lg text-xs overflow-hidden"
+                style={{ background: "var(--bg-elevated)", borderColor: "var(--border)", color: "var(--text)" }}
+              >
+                <button
+                  className="w-full text-left px-3 py-2 hover:opacity-80"
+                  onClick={() => {
+                    setOpenMenu(null);
+                    onOpenFolder();
+                  }}
+                >
+                  {t.titleBar.openFolder}
+                </button>
+                {recents.length > 0 && (
+                  <div className="border-t" style={{ borderColor: "var(--border)" }}>
+                    <div className="px-3 py-1 opacity-50">{t.titleBar.recent}</div>
+                    {recents.map((r) => (
+                      <button
+                        key={r.path}
+                        className="w-full text-left px-3 py-1.5 hover:opacity-80 truncate block"
+                        title={r.path}
+                        onClick={() => {
+                          setOpenMenu(null);
+                          onSwitchTo(r.path);
+                        }}
+                      >
+                        {r.name}
+                      </button>
+                    ))}
+                  </div>
+                )}
+                <div className="border-t" style={{ borderColor: "var(--border)" }}>
                   <button
-                    key={r.path}
-                    className="w-full text-left px-3 py-1.5 hover:opacity-80 truncate block"
-                    title={r.path}
+                    className="w-full text-left px-3 py-2 hover:opacity-80"
                     onClick={() => {
                       setOpenMenu(null);
-                      onSwitchTo(r.path);
+                      onCheckForUpdates();
                     }}
                   >
-                    {r.name}
+                    {t.titleBar.checkForUpdates}
                   </button>
-                ))}
+                </div>
               </div>
-            )}
-            <div className="border-t" style={{ borderColor: "var(--border)" }}>
-              <button
-                className="w-full text-left px-3 py-2 hover:opacity-80"
-                onClick={() => {
-                  setOpenMenu(null);
-                  onCheckForUpdates();
-                }}
-              >
-                {t.titleBar.checkForUpdates}
-              </button>
-            </div>
-          </div>
-        </>
-      )}
+            </>
+          )}
+        </div>
+      </div>
 
       <div className="flex items-center h-full">
         <button
