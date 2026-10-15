@@ -205,6 +205,7 @@ function AppContent() {
               showUpdateToast();
               try {
                 await update.downloadAndInstall();
+                await new Promise((resolve) => setTimeout(resolve, 1500));
                 await relaunch();
               } catch (err) {
                 installing = false;

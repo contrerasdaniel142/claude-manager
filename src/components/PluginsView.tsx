@@ -42,14 +42,25 @@ export default function PluginsView({ scope }: Props) {
   const searchRequestId = useRef(0);
 
   const refresh = async () => {
-    const [mp, inst] = await Promise.all([api.listMarketplaces(), api.listInstalledPlugins()]);
-    setMarketplaces(mp);
-    setInstalled(inst);
-    setAvailableMarketplace((current) => (current && mp.some((m) => m.name === current) ? current : mp[0]?.name ?? ""));
+    const attempts = [0, 800, 1600];
+    let lastErr: unknown;
+    for (let i = 0; i < attempts.length; i++) {
+      if (attempts[i] > 0) await new Promise((r) => setTimeout(r, attempts[i]));
+      try {
+        const [mp, inst] = await Promise.all([api.listMarketplaces(), api.listInstalledPlugins()]);
+        setMarketplaces(mp);
+        setInstalled(inst);
+        setAvailableMarketplace((current) => (current && mp.some((m) => m.name === current) ? current : mp[0]?.name ?? ""));
+        return;
+      } catch (e) {
+        lastErr = e;
+      }
+    }
+    throw lastErr;
   };
 
   useEffect(() => {
-    refresh();
+    refresh().catch((e) => toast.error(String(e)));
     setMarketplaceScope(toCliScope(scope));
     setInstallScope(toCliScope(scope));
     // eslint-disable-next-line react-hooks/exhaustive-deps
