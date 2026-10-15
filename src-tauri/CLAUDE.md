@@ -18,7 +18,7 @@ Gestor visual de docs de steering, hooks, agentes y skills de Claude Code. Tauri
 ## Estructura
 
 - `src/`: UI React + TypeScript.
-- `src-tauri/src/`: módulos de backend. Dominio: `agents.rs`, `skills.rs`, `hooks.rs`, `rules.rs`, `steering.rs`, `permissions.rs`, `mcp_servers.rs`, `plugins.rs`, `output_styles.rs`. Importación: `skill_import.rs`, `mcp_import.rs`. Infra: `claude_cli.rs`, `git.rs`, `watcher.rs`, `fsutil.rs`, `validate.rs`, `i18n.rs`, `assistant.rs`, `models.rs`.
+- `src-tauri/src/`: módulos de backend. Dominio: `agents.rs`, `skills.rs`, `hooks.rs`, `rules.rs`, `steering.rs`, `permissions.rs`, `mcp_servers.rs`, `plugins.rs`, `output_styles.rs`. Importación: `skill_import.rs`. Infra: `claude_cli.rs`, `git.rs`, `watcher.rs`, `fsutil.rs`, `validate.rs`, `i18n.rs`, `assistant.rs`, `models.rs`.
 - `src-tauri/src/main.rs` y `lib.rs`: arranque y registro de comandos Tauri.
 - `src-tauri/tauri.conf.json` y `src-tauri/Cargo.toml`: config de la app y dependencias Rust.
 

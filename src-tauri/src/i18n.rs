@@ -78,20 +78,6 @@ pub fn mcp_server_needs_command(lang: Lang) -> String {
     }
 }
 
-pub fn no_mcp_json_in_repo(lang: Lang) -> String {
-    match lang {
-        Lang::En => "I couldn't find any .mcp.json in that repo.".into(),
-        Lang::Es => "No pude encontrar ningún .mcp.json en ese repo.".into(),
-    }
-}
-
-pub fn mcp_json_disappeared(lang: Lang, rel_path: &str) -> String {
-    match lang {
-        Lang::En => format!("{rel_path} no longer has that server — did the repo change?"),
-        Lang::Es => format!("{rel_path} ya no tiene ese servidor — ¿cambió el repo?"),
-    }
-}
-
 pub fn output_style_already_exists(lang: Lang, slug: &str) -> String {
     match lang {
         Lang::En => format!(

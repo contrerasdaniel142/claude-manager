@@ -315,6 +315,9 @@ export default function SkillsView({
             getTitle={(item) => item.name}
             getSubtitle={(item) => item.description || item.rel_path}
             onImported={refresh}
+            getPreviewBody={(item) => item.body}
+            getPreviewWhenToUse={(item) => item.when_to_use}
+            previewLabels={{ whenToUseLabel: t.skillMarketplace.whenToUseLabel, emptyBody: t.skillMarketplace.emptyBody }}
           />
         ) : selected === "__marketplace__" ? (
           <SkillMarketplaceBox scope={scope} localNames={list.map((s) => s.name)} onInstalled={refresh} />

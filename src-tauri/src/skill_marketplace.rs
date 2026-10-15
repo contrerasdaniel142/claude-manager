@@ -91,6 +91,9 @@ pub struct MarketplaceSkillPreview {
     pub description: String,
     pub when_to_use: String,
     pub body: String,
+    /// True means the GitHub source is gone and only the description was
+    /// recovered from skills.sh; when_to_use and body are empty in that case.
+    pub source_gone: bool,
 }
 
 fn find_path_in_tree(tree_body: &str, skill_id: &str) -> Option<String> {
@@ -103,14 +106,44 @@ fn find_path_in_tree(tree_body: &str, skill_id: &str) -> Option<String> {
     })
 }
 
+fn extract_skills_sh_description(html: &str) -> Option<String> {
+    let tag = r#"<meta name="description" content=""#;
+    let start = html.find(tag)? + tag.len();
+    let rest = &html[start..];
+    let end = rest.find('"')?;
+    let content = rest[..end].trim();
+    if content.is_empty() {
+        return None;
+    }
+    let decoded = content
+        .replace("&quot;", "\"")
+        .replace("&#39;", "'")
+        .replace("&apos;", "'")
+        .replace("&lt;", "<")
+        .replace("&gt;", ">")
+        .replace("&amp;", "&");
+    Some(decoded)
+}
+
+fn fetch_skills_sh_description(source: &str, skill_id: &str) -> Option<String> {
+    let url = format!("https://www.skills.sh/{source}/{skill_id}");
+    let body = ureq::get(&url).call().ok()?.into_string().ok()?;
+    extract_skills_sh_description(&body)
+}
+
+fn is_repo_gone(err: &ureq::Error) -> bool {
+    matches!(err, ureq::Error::Status(404, _))
+}
+
 /// A 404 from GitHub here means the repo itself (or the file in it) is
 /// gone — skills.sh's index lagging behind a repo that was since deleted,
 /// renamed or made private — which reads very differently from "I can't
 /// reach GitHub at all", so it gets its own message instead of a generic one.
 fn github_error(lang: Lang, source: &str, err: ureq::Error) -> String {
-    match err {
-        ureq::Error::Status(404, _) => i18n::skill_repo_gone(lang, source),
-        other => i18n::github_request_failed(lang, &other.to_string()),
+    if is_repo_gone(&err) {
+        i18n::skill_repo_gone(lang, source)
+    } else {
+        i18n::github_request_failed(lang, &err.to_string())
     }
 }
 
@@ -121,18 +154,36 @@ fn github_error(lang: Lang, source: &str, err: ureq::Error) -> String {
 /// read of a few KB of markdown, cloning the whole repo for that would be
 /// wasteful for something the user might click through several of per search.
 fn preview_marketplace_skill_impl(lang: Lang, source: &str, skill_id: &str) -> Result<MarketplaceSkillPreview, String> {
-    let tree_response = ureq::get(&format!("https://api.github.com/repos/{source}/git/trees/HEAD?recursive=1"))
+    let fallback = |e: ureq::Error| -> Result<MarketplaceSkillPreview, String> {
+        if is_repo_gone(&e) {
+            if let Some(description) = fetch_skills_sh_description(source, skill_id) {
+                return Ok(MarketplaceSkillPreview {
+                    description,
+                    when_to_use: String::new(),
+                    body: String::new(),
+                    source_gone: true,
+                });
+            }
+        }
+        Err(github_error(lang, source, e))
+    };
+
+    let tree_response = match ureq::get(&format!("https://api.github.com/repos/{source}/git/trees/HEAD?recursive=1"))
         .set("User-Agent", "clman")
         .call()
-        .map_err(|e| github_error(lang, source, e))?;
+    {
+        Ok(res) => res,
+        Err(e) => return fallback(e),
+    };
     let tree_body = tree_response
         .into_string()
         .map_err(|e| i18n::github_request_failed(lang, &e.to_string()))?;
     let path = find_path_in_tree(&tree_body, skill_id).ok_or_else(|| i18n::skill_not_found_in_repo(lang, skill_id))?;
 
-    let raw_response = ureq::get(&format!("https://raw.githubusercontent.com/{source}/HEAD/{path}"))
-        .call()
-        .map_err(|e| github_error(lang, source, e))?;
+    let raw_response = match ureq::get(&format!("https://raw.githubusercontent.com/{source}/HEAD/{path}")).call() {
+        Ok(res) => res,
+        Err(e) => return fallback(e),
+    };
     let raw = raw_response
         .into_string()
         .map_err(|e| i18n::github_request_failed(lang, &e.to_string()))?;
@@ -143,6 +194,7 @@ fn preview_marketplace_skill_impl(lang: Lang, source: &str, skill_id: &str) -> R
         description: fm.description.unwrap_or_default(),
         when_to_use: fm.when_to_use.unwrap_or_default(),
         body,
+        source_gone: false,
     })
 }
 
@@ -230,5 +282,41 @@ mod tests {
         // so we don't burn a network round trip on every single keystroke.
         assert_eq!(search_marketplace_skills_impl(Lang::En, "a").unwrap(), Vec::new());
         assert_eq!(search_marketplace_skills_impl(Lang::En, " ").unwrap(), Vec::new());
+    }
+
+    #[test]
+    fn extract_skills_sh_description_extracts_and_decodes() {
+        let html = "<html><head><meta name=\"description\" content=\"Hexagonal architecture (ports &amp; adapters) for Java Spring Boot...\"></head></html>";
+        assert_eq!(
+            extract_skills_sh_description(html),
+            Some("Hexagonal architecture (ports & adapters) for Java Spring Boot...".to_string())
+        );
+    }
+
+    #[test]
+    fn extract_skills_sh_description_decodes_entities_correctly() {
+        let html = r#"<meta name="description" content="&quot;quotes&#39; &amp; &apos;apostrophes&apos; &lt;brackets&gt; &amp;lt;">"#;
+        assert_eq!(
+            extract_skills_sh_description(html),
+            Some("\"quotes' & 'apostrophes' <brackets> &lt;".to_string())
+        );
+    }
+
+    #[test]
+    fn extract_skills_sh_description_returns_none_when_tag_absent_or_empty() {
+        assert_eq!(extract_skills_sh_description("<html><head></head></html>"), None);
+        assert_eq!(extract_skills_sh_description(r#"<meta name="description" content="">"#), None);
+        assert_eq!(extract_skills_sh_description(r#"<meta name="description" content="   ">"#), None);
+    }
+
+    #[test]
+    fn is_repo_gone_detects_404_only() {
+        let resp_404 = ureq::Response::new(404, "Not Found", "{}").unwrap();
+        let err_404 = ureq::Error::Status(404, resp_404);
+        assert!(is_repo_gone(&err_404));
+
+        let resp_500 = ureq::Response::new(500, "Internal Server Error", "{}").unwrap();
+        let err_500 = ureq::Error::Status(500, resp_500);
+        assert!(!is_repo_gone(&err_500));
     }
 }

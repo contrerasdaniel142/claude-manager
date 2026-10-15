@@ -13,12 +13,15 @@ pub struct RemoteSkill {
     pub rel_path: String,
     pub name: String,
     pub description: String,
+    pub when_to_use: String,
+    /// Full SKILL.md body after frontmatter, used for preview before install.
+    pub body: String,
     pub extra_files: Vec<String>,
 }
 
-fn parse_skill_md(path: &Path) -> (String, String) {
+fn parse_skill_md(path: &Path) -> (String, String, String, String) {
     let raw = fs::read_to_string(path).unwrap_or_default();
-    let (yaml, _body) = crate::fsutil::split_frontmatter(&raw);
+    let (yaml, body) = crate::fsutil::split_frontmatter(&raw);
     let fm: crate::models::SkillFrontmatter = yaml
         .as_deref()
         .and_then(|y| serde_yaml::from_str(y).ok())
@@ -28,7 +31,12 @@ fn parse_skill_md(path: &Path) -> (String, String) {
         .and_then(|p| p.file_name())
         .map(|n| n.to_string_lossy().to_string())
         .unwrap_or_default();
-    (fm.name.unwrap_or(folder_name), fm.description.unwrap_or_default())
+    (
+        fm.name.unwrap_or(folder_name),
+        fm.description.unwrap_or_default(),
+        fm.when_to_use.unwrap_or_default(),
+        body.trim().to_string(),
+    )
 }
 
 fn extra_files(dir: &Path) -> Vec<String> {
@@ -79,11 +87,13 @@ fn list_remote_skills_impl(lang: Lang, repo_url: &str) -> Result<Vec<RemoteSkill
     for entry in walk_skill_md(&tmp) {
         let dir = entry.path().parent().unwrap_or(&tmp);
         let rel_path = dir.strip_prefix(&tmp).unwrap_or(dir).to_string_lossy().replace('\\', "/");
-        let (name, description) = parse_skill_md(entry.path());
+        let (name, description, when_to_use, body) = parse_skill_md(entry.path());
         out.push(RemoteSkill {
             rel_path,
             name,
             description,
+            when_to_use,
+            body,
             extra_files: extra_files(dir),
         });
     }
@@ -214,9 +224,48 @@ mod tests {
         assert!(names.contains(&"skill-three"));
         let one = skills.iter().find(|s| s.name == "skill-one").unwrap();
         assert_eq!(one.rel_path, "skill-one", "must be the top-level copy, not .openclaw's");
+        assert_eq!(one.body, "Body of skill one.");
+        assert_eq!(one.when_to_use, "");
         let two = skills.iter().find(|s| s.name == "skill-two").unwrap();
         assert_eq!(two.rel_path, "nested/skill-two");
         assert_eq!(two.extra_files, vec!["reference.md".to_string()]);
+        assert_eq!(two.body, "Body of skill two.");
+        assert_eq!(two.when_to_use, "");
+        let three = skills.iter().find(|s| s.name == "skill-three").unwrap();
+        assert_eq!(three.when_to_use, "");
+    }
+
+    #[test]
+    fn parse_skill_md_reads_when_to_use_and_body() {
+        let dir = tempfile::tempdir().unwrap();
+        let skill_file = dir.path().join("SKILL.md");
+
+        let content_with_fm = r#"---
+name: custom-skill
+description: A custom skill description
+when_to_use: Use this skill when testing
+---
+
+# Heading
+
+- Item 1
+- Item 2
+"#;
+        fs::write(&skill_file, content_with_fm).unwrap();
+        let (name, desc, when_to_use, body) = parse_skill_md(&skill_file);
+        assert_eq!(name, "custom-skill");
+        assert_eq!(desc, "A custom skill description");
+        assert_eq!(when_to_use, "Use this skill when testing");
+        assert_eq!(body, "# Heading\n\n- Item 1\n- Item 2");
+
+        // Case with no frontmatter at all
+        let content_without_fm = "# Direct Heading\n\nSome body content.\n";
+        fs::write(&skill_file, content_without_fm).unwrap();
+        let (name, desc, when_to_use, body) = parse_skill_md(&skill_file);
+        assert_eq!(name, dir.path().file_name().unwrap().to_str().unwrap());
+        assert_eq!(desc, "");
+        assert_eq!(when_to_use, "");
+        assert_eq!(body, "# Direct Heading\n\nSome body content.");
     }
 
     #[test]

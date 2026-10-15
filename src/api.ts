@@ -12,9 +12,9 @@ import type {
   OutputStyleFile,
   OutputStyleSummary,
   PermissionsSettings,
+  PluginInstallResult,
   PluginSearchPage,
   PluginSummary,
-  RemoteMcpServer,
   RemoteSkill,
   SaveMcpServerInput,
   RuleFile,
@@ -118,10 +118,6 @@ export const api = {
   readMcpServer: (scope: Scope, name: string) => invoke<McpServerFile>("read_mcp_server", { scope, name }),
   saveMcpServer: (input: SaveMcpServerInput) => invoke<McpServerSummary>("save_mcp_server", { input }),
   deleteMcpServer: (scope: Scope, name: string) => invoke<void>("delete_mcp_server", { scope, name }),
-  listRemoteMcpServers: (repoUrl: string) =>
-    invoke<RemoteMcpServer[]>("list_remote_mcp_servers", { repoUrl }),
-  importMcpServer: (repoUrl: string, relPath: string, name: string, scope: Scope) =>
-    invoke<McpServerSummary>("import_mcp_server", { repoUrl, relPath, name, scope }),
 
   listMarketplaces: () => invoke<MarketplaceSummary[]>("list_marketplaces"),
   addMarketplace: (source: string, scope: string) => invoke<string>("add_marketplace", { source, scope }),
@@ -130,7 +126,9 @@ export const api = {
   searchAvailablePlugins: (marketplace: string, query: string, offset: number, limit: number, force = false) =>
     invoke<PluginSearchPage>("search_available_plugins", { marketplace, query, offset, limit, force }),
   installPlugin: (name: string, marketplace: string, scope: string) =>
-    invoke<string>("install_plugin", { name, marketplace, scope }),
+    invoke<PluginInstallResult>("install_plugin", { name, marketplace, scope }),
+  confirmPluginInstall: (name: string, marketplace: string, scope: string, sha256: string) =>
+    invoke<PluginInstallResult>("confirm_plugin_install", { name, marketplace, scope, sha256 }),
   uninstallPlugin: (name: string, marketplace: string, scope: string) =>
     invoke<string>("uninstall_plugin", { name, marketplace, scope }),
   enablePlugin: (name: string, marketplace: string, scope: string) =>

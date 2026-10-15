@@ -138,19 +138,6 @@ const en = {
     headersLabel: "headers — one Key: Value per line",
     headersPlaceholder: "Authorization: Bearer $TOKEN",
     deleteConfirm: (name: string) => `Delete MCP server "${name}"? This can't be undone.`,
-    installFromRepo: "+ Install from repo",
-  },
-  importMcpServer: {
-    intro:
-      "Paste a git repo URL. I'll look for every .mcp.json it has, at the root or in any subfolder, and list each server it defines.",
-    urlLabel: "Repository URL",
-    urlPlaceholder: "https://github.com/user/repo",
-    searching: "Searching...",
-    search: "Search",
-    noneFound: "I couldn't find any .mcp.json in that repo.",
-    alreadyInstalled: "Already installed",
-    installing: "Installing...",
-    install: "Install",
   },
   commandPalette: {
     placeholder: "Type a command...",
@@ -216,6 +203,10 @@ const en = {
     remove: "Remove",
     refreshAll: "Refresh everything",
     refreshAllSuccess: "Refreshed",
+    confirmCommandWarning:
+      "This plugin wants to run the following command on your machine. Only continue if you trust it:",
+    confirmCommandApprove: "Run and install",
+    confirmCommandCancel: "Cancel",
   },
   agents: {
     newAgent: "+ New agent",
@@ -438,6 +429,8 @@ const en = {
     loadingPreview: "Loading preview...",
     whenToUseLabel: "When to use",
     emptyBody: "*(this skill has no content besides its description)*",
+    sourceGoneNote:
+      "This skill's source repository seems to have been removed from GitHub since skills.sh indexed it. Only the description could be recovered.",
     previewFailedInstallHint:
       "Install is a separate request and may still work — but if the repo is really gone, it'll fail the same way.",
   },
@@ -591,19 +584,6 @@ const es: typeof en = {
     headersLabel: "headers — una línea Key: Value por header",
     headersPlaceholder: "Authorization: Bearer $TOKEN",
     deleteConfirm: (name: string) => `¿Eliminar el servidor MCP "${name}"? No se puede deshacer.`,
-    installFromRepo: "+ Instalar desde repo",
-  },
-  importMcpServer: {
-    intro:
-      "Pega la URL de un repositorio git. Busco todos los .mcp.json que tenga, en la raíz o en cualquier subcarpeta, y listo cada servidor que define.",
-    urlLabel: "URL del repositorio",
-    urlPlaceholder: "https://github.com/usuario/repo",
-    searching: "Buscando...",
-    search: "Buscar",
-    noneFound: "No encontré ningún .mcp.json en ese repo.",
-    alreadyInstalled: "Ya instalado",
-    installing: "Instalando...",
-    install: "Instalar",
   },
   commandPalette: {
     placeholder: "Escribe un comando...",
@@ -668,6 +648,10 @@ const es: typeof en = {
     remove: "Eliminar",
     refreshAll: "Refrescar todo",
     refreshAllSuccess: "Actualizado",
+    confirmCommandWarning:
+      "Este plugin quiere ejecutar el siguiente comando en tu equipo. Continúa solo si confías en él:",
+    confirmCommandApprove: "Ejecutar e instalar",
+    confirmCommandCancel: "Cancelar",
   },
   agents: {
     newAgent: "+ Nuevo agente",
@@ -890,6 +874,8 @@ const es: typeof en = {
     loadingPreview: "Cargando vista previa...",
     whenToUseLabel: "Cuándo usarlo",
     emptyBody: "*(este skill no tiene contenido además de la descripción)*",
+    sourceGoneNote:
+      "El repositorio de origen de este skill parece haber sido eliminado de GitHub desde que skills.sh lo indexó. Solo se pudo recuperar la descripción.",
     previewFailedInstallHint:
       "Instalar es un pedido aparte y puede igual funcionar — pero si el repo ya no existe, va a fallar de la misma forma.",
   },

@@ -3,7 +3,6 @@ import { api } from "../api";
 import type { McpServerSummary, Scope } from "../types";
 import AiAssistBox from "./AiAssistBox";
 import Button from "./Button";
-import ImportFromRepoBox from "./ImportFromRepoBox";
 import { useLanguage } from "./LanguageProvider";
 import ListRow from "./ListRow";
 import Select from "./Select";
@@ -101,10 +100,6 @@ export default function McpServersView({
     setForm(emptyForm());
   };
 
-  const openImport = () => {
-    setSelected("__import__");
-  };
-
   const openExisting = async (name: string) => {
     const server = await api.readMcpServer(scope, name);
     setSelected(name);
@@ -193,9 +188,6 @@ export default function McpServersView({
           <Button full onClick={openNew}>
             {t.mcpServers.newServer}
           </Button>
-          <Button full onClick={openImport}>
-            {t.mcpServers.installFromRepo}
-          </Button>
         </div>
         {list.map((s) => (
           <ListRow
@@ -214,19 +206,7 @@ export default function McpServersView({
       </div>
 
       <div className="flex-1 overflow-y-auto p-5">
-        {selected === "__import__" ? (
-          <ImportFromRepoBox
-            strings={t.importMcpServer}
-            localNames={list.map((s) => s.name)}
-            search={(repoUrl) => api.listRemoteMcpServers(repoUrl)}
-            install={(repoUrl, item) => api.importMcpServer(repoUrl, item.rel_path, item.name, scope)}
-            getKey={(item) => `${item.rel_path}::${item.name}`}
-            getName={(item) => item.name}
-            getTitle={(item) => item.name}
-            getSubtitle={(item) => `${item.server_type} — ${item.rel_path}`}
-            onImported={refresh}
-          />
-        ) : !selected ? (
+        {!selected ? (
           <div className="max-w-2xl space-y-3" style={{ color: "var(--text-muted)" }}>
             <p>{t.mcpServers.emptyMainP1}</p>
             <p className="text-xs">{t.mcpServers.emptyMainP2(".mcp.json", "~/.claude.json")}</p>

@@ -29,6 +29,14 @@ export default function PluginsView({ scope }: Props) {
   const [availableMarketplace, setAvailableMarketplace] = useState("");
   const [availableSearch, setAvailableSearch] = useState("");
   const [busy, setBusy] = useState<Set<string>>(new Set());
+  const [pendingConfirm, setPendingConfirm] = useState<{
+    id: string;
+    name: string;
+    marketplace: string;
+    scope: string;
+    command: string;
+    sha256: string;
+  } | null>(null);
   const toast = useToast();
   const { t } = useLanguage();
   const searchRequestId = useRef(0);
@@ -81,11 +89,13 @@ export default function PluginsView({ scope }: Props) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [availableMarketplace, availableSearch]);
 
-  const withBusy = async (key: string, fn: () => Promise<string>) => {
+  const withBusy = async (key: string, fn: () => Promise<string | void>) => {
     setBusy((prev) => new Set(prev).add(key));
     try {
       const message = await fn();
-      toast.success(message);
+      if (message) {
+        toast.success(message);
+      }
       await refresh();
     } catch (e) {
       toast.error(String(e));
@@ -295,32 +305,112 @@ export default function PluginsView({ scope }: Props) {
                 </div>
               )}
               <div className="mt-1.5 space-y-1.5">
-                {availableItems.map((p) => (
-                  <div
-                    key={p.id}
-                    className="p-2.5 rounded-lg border flex items-start gap-3"
-                    style={{ borderColor: "var(--border)" }}
-                  >
-                    <div className="min-w-0 flex-1">
-                      <div className="text-sm font-medium truncate">{p.id}</div>
-                      {p.description && (
-                        <div className="text-xs mt-0.5" style={{ color: "var(--text-muted)" }}>
-                          {p.description}
+                {availableItems.map((p) => {
+                  const isPending = pendingConfirm?.id === p.id;
+                  return (
+                    <div
+                      key={p.id}
+                      className="p-2.5 rounded-lg border space-y-2.5"
+                      style={{ borderColor: "var(--border)" }}
+                    >
+                      <div className="flex items-start gap-3">
+                        <div className="min-w-0 flex-1">
+                          <div className="text-sm font-medium truncate">{p.id}</div>
+                          {p.description && (
+                            <div className="text-xs mt-0.5" style={{ color: "var(--text-muted)" }}>
+                              {p.description}
+                            </div>
+                          )}
+                        </div>
+                        <Button
+                          size="sm"
+                          className="shrink-0"
+                          disabled={busy.has(`install-${p.id}`)}
+                          onClick={() =>
+                            withBusy(`install-${p.id}`, async () => {
+                              const res = await api.installPlugin(p.name, p.marketplace, installScope);
+                              if (res.status === "needs_confirmation") {
+                                setPendingConfirm({
+                                  id: p.id,
+                                  name: p.name,
+                                  marketplace: p.marketplace,
+                                  scope: installScope,
+                                  command: res.command ?? "",
+                                  sha256: res.sha256 ?? "",
+                                });
+                                return;
+                              }
+                              setPendingConfirm(null);
+                              return res.message;
+                            })
+                          }
+                        >
+                          {t.plugins.install}
+                        </Button>
+                      </div>
+
+                      {isPending && (
+                        <div
+                          className="p-2.5 rounded border space-y-2 text-xs"
+                          style={{
+                            borderColor: "var(--border)",
+                            backgroundColor: "var(--bg-subtle, rgba(255, 255, 255, 0.03))",
+                          }}
+                        >
+                          <p style={{ color: "var(--text-muted)" }}>{t.plugins.confirmCommandWarning}</p>
+                          <pre
+                            className="p-2 rounded font-mono text-xs overflow-x-auto whitespace-pre-wrap break-all select-text"
+                            style={{
+                              backgroundColor: "var(--bg-code, rgba(0, 0, 0, 0.2))",
+                              border: "1px solid var(--border)",
+                            }}
+                          >
+                            <code>{pendingConfirm.command}</code>
+                          </pre>
+                          <div className="flex items-center gap-2">
+                            <Button
+                              size="sm"
+                              disabled={busy.has(`install-${p.id}`)}
+                              onClick={() =>
+                                withBusy(`install-${p.id}`, async () => {
+                                  const res = await api.confirmPluginInstall(
+                                    pendingConfirm.name,
+                                    pendingConfirm.marketplace,
+                                    pendingConfirm.scope,
+                                    pendingConfirm.sha256,
+                                  );
+                                  if (res.status === "needs_confirmation") {
+                                    setPendingConfirm({
+                                      id: p.id,
+                                      name: pendingConfirm.name,
+                                      marketplace: pendingConfirm.marketplace,
+                                      scope: pendingConfirm.scope,
+                                      command: res.command ?? "",
+                                      sha256: res.sha256 ?? "",
+                                    });
+                                    return;
+                                  }
+                                  setPendingConfirm(null);
+                                  return res.message;
+                                })
+                              }
+                            >
+                              {t.plugins.confirmCommandApprove}
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              disabled={busy.has(`install-${p.id}`)}
+                              onClick={() => setPendingConfirm(null)}
+                            >
+                              {t.plugins.confirmCommandCancel}
+                            </Button>
+                          </div>
                         </div>
                       )}
                     </div>
-                    <Button
-                      size="sm"
-                      className="shrink-0"
-                      disabled={busy.has(`install-${p.id}`)}
-                      onClick={() =>
-                        withBusy(`install-${p.id}`, () => api.installPlugin(p.name, p.marketplace, installScope))
-                      }
-                    >
-                      {t.plugins.install}
-                    </Button>
-                  </div>
-                ))}
+                  );
+                })}
                 {availableItems.length === 0 && !availableLoading && (
                   <p className="text-xs" style={{ color: "var(--text-muted)" }}>
                     {t.plugins.noneFound}

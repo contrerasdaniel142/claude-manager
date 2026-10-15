@@ -244,13 +244,9 @@ export interface RemoteSkill {
   rel_path: string;
   name: string;
   description: string;
+  when_to_use: string;
+  body: string;
   extra_files: string[];
-}
-
-export interface RemoteMcpServer {
-  rel_path: string;
-  name: string;
-  server_type: string;
 }
 
 export interface SaveMcpServerInput {
@@ -289,6 +285,14 @@ export interface PluginSearchPage {
   total: number;
 }
 
+export interface PluginInstallResult {
+  status: "ok" | "needs_confirmation";
+  message: string;
+  command: string | null;
+  kind: string | null;
+  sha256: string | null;
+}
+
 export interface MarketplaceSkillSummary {
   source: string;
   skill_id: string;
@@ -300,6 +304,7 @@ export interface MarketplaceSkillPreview {
   description: string;
   when_to_use: string;
   body: string;
+  source_gone: boolean;
 }
 
 export type Category =

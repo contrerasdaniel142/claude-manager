@@ -1,4 +1,5 @@
 import { useState } from "react";
+import ReactMarkdown from "react-markdown";
 import Button from "./Button";
 import TextInput from "./TextInput";
 import { useToast } from "./ToastProvider";
@@ -30,6 +31,10 @@ interface Props<T> {
   getTitle: (item: T) => string;
   getSubtitle: (item: T) => string;
   onImported: () => void;
+  /** Optional preview functions and labels for expandable row content. */
+  getPreviewBody?: (item: T) => string | null;
+  getPreviewWhenToUse?: (item: T) => string | null;
+  previewLabels?: { whenToUseLabel: string; emptyBody: string };
 }
 
 /** Generic "paste a repo URL, search it, install what it finds" box — the
@@ -46,11 +51,15 @@ export default function ImportFromRepoBox<T>({
   getTitle,
   getSubtitle,
   onImported,
+  getPreviewBody,
+  getPreviewWhenToUse,
+  previewLabels,
 }: Props<T>) {
   const [repoUrl, setRepoUrl] = useState("");
   const [found, setFound] = useState<T[] | null>(null);
   const [loading, setLoading] = useState(false);
   const [importing, setImporting] = useState<Set<string>>(new Set());
+  const [expanded, setExpanded] = useState<string | null>(null);
   const toast = useToast();
 
   const search = async () => {
@@ -83,6 +92,10 @@ export default function ImportFromRepoBox<T>({
     }
   };
 
+  const toggleExpand = (key: string) => {
+    setExpanded((curr) => (curr === key ? null : key));
+  };
+
   return (
     <div className="max-w-2xl space-y-3">
       <p style={{ color: "var(--text-muted)" }}>{strings.intro}</p>
@@ -111,32 +124,76 @@ export default function ImportFromRepoBox<T>({
           {found.map((item) => {
             const key = getKey(item);
             const alreadyInstalled = localNames.includes(getName(item));
+            const hasPreview = !!getPreviewBody;
+            const isExpanded = hasPreview && expanded === key;
+            const whenToUse = getPreviewWhenToUse ? getPreviewWhenToUse(item) : null;
+            const rawBody = getPreviewBody ? getPreviewBody(item) : null;
+            const body = rawBody && rawBody.trim() ? rawBody : previewLabels?.emptyBody || "";
+
             return (
               <div
                 key={key}
-                className="p-2.5 rounded-lg border flex items-start gap-3"
+                className={hasPreview ? "rounded-lg border" : "p-2.5 rounded-lg border flex items-start gap-3"}
                 style={{ borderColor: "var(--border)" }}
               >
-                <div className="min-w-0 flex-1">
-                  <div className="text-sm font-medium truncate">{getTitle(item)}</div>
-                  <div className="text-xs mt-0.5" style={{ color: "var(--text-muted)" }}>
-                    {getSubtitle(item)}
+                <div
+                  {...(hasPreview
+                    ? {
+                        role: "button",
+                        tabIndex: 0,
+                        onClick: () => toggleExpand(key),
+                        onKeyDown: (e: React.KeyboardEvent) => {
+                          if (e.key === "Enter" || e.key === " ") {
+                            e.preventDefault();
+                            toggleExpand(key);
+                          }
+                        },
+                        className: "w-full p-2.5 flex items-start gap-3 text-left cursor-pointer",
+                      }
+                    : {
+                        className: "contents",
+                      })}
+                >
+                  <div className="min-w-0 flex-1">
+                    <div className="text-sm font-medium truncate">{getTitle(item)}</div>
+                    <div className="text-xs mt-0.5" style={{ color: "var(--text-muted)" }}>
+                      {getSubtitle(item)}
+                    </div>
                   </div>
+                  {alreadyInstalled ? (
+                    <span className="shrink-0 text-xs pt-0.5" style={{ color: "var(--text-muted)" }}>
+                      {strings.alreadyInstalled}
+                    </span>
+                  ) : (
+                    <Button
+                      size="sm"
+                      className="shrink-0"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        install(item);
+                      }}
+                      disabled={importing.has(key)}
+                      style={{ opacity: importing.has(key) ? 0.6 : 1 }}
+                    >
+                      {importing.has(key) ? strings.installing : strings.install}
+                    </Button>
+                  )}
                 </div>
-                {alreadyInstalled ? (
-                  <span className="shrink-0 text-xs pt-0.5" style={{ color: "var(--text-muted)" }}>
-                    {strings.alreadyInstalled}
-                  </span>
-                ) : (
-                  <Button
-                    size="sm"
-                    className="shrink-0"
-                    onClick={() => install(item)}
-                    disabled={importing.has(key)}
-                    style={{ opacity: importing.has(key) ? 0.6 : 1 }}
-                  >
-                    {importing.has(key) ? strings.installing : strings.install}
-                  </Button>
+
+                {hasPreview && isExpanded && (
+                  <div className="px-3 pb-3 border-t pt-2 space-y-2" style={{ borderColor: "var(--border)" }}>
+                    {whenToUse && previewLabels?.whenToUseLabel && (
+                      <p className="text-xs" style={{ color: "var(--text-muted)" }}>
+                        {previewLabels.whenToUseLabel}: {whenToUse}
+                      </p>
+                    )}
+                    <div
+                      className="prose prose-sm max-w-none max-h-64 overflow-auto rounded-md border p-2"
+                      style={{ borderColor: "var(--border)", color: "var(--text)" }}
+                    >
+                      <ReactMarkdown>{body}</ReactMarkdown>
+                    </div>
+                  </div>
                 )}
               </div>
             );

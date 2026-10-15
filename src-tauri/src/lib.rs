@@ -5,7 +5,6 @@ mod fsutil;
 mod git;
 mod hooks;
 mod i18n;
-mod mcp_import;
 mod mcp_servers;
 mod models;
 mod output_styles;
@@ -115,14 +114,13 @@ pub fn run(project_root: PathBuf) {
             mcp_servers::read_mcp_server,
             mcp_servers::save_mcp_server,
             mcp_servers::delete_mcp_server,
-            mcp_import::list_remote_mcp_servers,
-            mcp_import::import_mcp_server,
             plugins::list_marketplaces,
             plugins::add_marketplace,
             plugins::remove_marketplace,
             plugins::list_installed_plugins,
             plugins::search_available_plugins,
             plugins::install_plugin,
+            plugins::confirm_plugin_install,
             plugins::uninstall_plugin,
             plugins::enable_plugin,
             plugins::disable_plugin,

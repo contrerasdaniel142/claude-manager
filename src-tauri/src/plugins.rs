@@ -1,6 +1,8 @@
 use crate::claude_cli::run as run_claude;
 use crate::i18n;
-use crate::models::{AppState, Lang, MarketplaceSummary, PluginSearchPage, PluginSummary};
+use crate::models::{
+    AppState, Lang, MarketplaceSummary, PluginInstallResult, PluginSearchPage, PluginSummary,
+};
 use serde_json::Value;
 use tauri::State;
 
@@ -28,6 +30,55 @@ fn run_json_command(lang: Lang, args: &[&str]) -> Result<String, String> {
     }
     if code == 0 {
         return Ok(stdout.trim().to_string());
+    }
+    let reason = if !stderr.trim().is_empty() { stderr.trim() } else { stdout.trim() };
+    Err(i18n::claude_returned_error(lang, reason, code))
+}
+
+pub(crate) fn parse_install_result(
+    lang: Lang,
+    stdout: &str,
+    stderr: &str,
+    code: i32,
+) -> Result<PluginInstallResult, String> {
+    if let Some(v) = last_json_line(stdout) {
+        let message = v.get("message").and_then(|m| m.as_str()).unwrap_or("").to_string();
+        if let Some(shown) = v.get("shownCommand").and_then(|s| s.as_object()) {
+            if let Some(sha256) = shown.get("sha256").and_then(|s| s.as_str()) {
+                let command = shown
+                    .get("command")
+                    .and_then(|c| c.as_str())
+                    .unwrap_or("")
+                    .to_string();
+                let kind = shown.get("kind").and_then(|k| k.as_str()).map(|s| s.to_string());
+                return Ok(PluginInstallResult {
+                    status: "needs_confirmation".to_string(),
+                    message,
+                    command: Some(command),
+                    kind,
+                    sha256: Some(sha256.to_string()),
+                });
+            }
+        }
+        if v.get("outcome").and_then(|o| o.as_str()) == Some("ok") {
+            return Ok(PluginInstallResult {
+                status: "ok".to_string(),
+                message,
+                command: None,
+                kind: None,
+                sha256: None,
+            });
+        }
+        return Err(message);
+    }
+    if code == 0 {
+        return Ok(PluginInstallResult {
+            status: "ok".to_string(),
+            message: stdout.trim().to_string(),
+            command: None,
+            kind: None,
+            sha256: None,
+        });
     }
     let reason = if !stderr.trim().is_empty() { stderr.trim() } else { stdout.trim() };
     Err(i18n::claude_returned_error(lang, reason, code))
@@ -212,14 +263,46 @@ pub async fn install_plugin(
     name: String,
     marketplace: String,
     scope: String,
-) -> Result<String, String> {
+) -> Result<PluginInstallResult, String> {
     let lang = state.lang();
     tauri::async_runtime::spawn_blocking(move || {
         let id = format!("{name}@{marketplace}");
-        // `-y` auto-accepts a marketplace-declared install command instead of
-        // waiting on a terminal prompt clman has no TTY to answer — equivalent
-        // to the user running the same `-y` install from their own terminal.
-        run_json_command(lang, &["install", &id, "--scope", &scope, "-y", "--json"])
+        // We do NOT pass `-y` here so arbitrary shell commands declared by a
+        // marketplace plugin are not silently executed without user review.
+        // If a command is required, Claude Code refuses execution and reports
+        // `shownCommand`, which we bubble up for explicit user confirmation.
+        let (stdout, stderr, code) =
+            run_claude_plugin(lang, &["install", &id, "--scope", &scope, "--json"])?;
+        parse_install_result(lang, &stdout, &stderr, code)
+    })
+    .await
+    .map_err(|e| e.to_string())?
+}
+
+#[tauri::command]
+pub async fn confirm_plugin_install(
+    state: State<'_, AppState>,
+    name: String,
+    marketplace: String,
+    scope: String,
+    sha256: String,
+) -> Result<PluginInstallResult, String> {
+    let lang = state.lang();
+    tauri::async_runtime::spawn_blocking(move || {
+        let id = format!("{name}@{marketplace}");
+        let (stdout, stderr, code) = run_claude_plugin(
+            lang,
+            &[
+                "install",
+                &id,
+                "--scope",
+                &scope,
+                "--accept-command",
+                &sha256,
+                "--json",
+            ],
+        )?;
+        parse_install_result(lang, &stdout, &stderr, code)
     })
     .await
     .map_err(|e| e.to_string())?
@@ -362,5 +445,33 @@ mod tests {
 
         let page = filter_available(&all, "", "", 2, 2);
         assert_eq!(page.items.len(), 1, "offset skips past the first page");
+    }
+
+    #[test]
+    fn parse_install_result_detects_shown_command_needing_confirmation() {
+        let stdout = "Running harmless probe command check...\nSome informational line\n{\"command\":\"install\",\"outcome\":\"failed\",\"plugin\":\"probe-cmd@clman-probe\",\"scope\":\"user\",\"message\":\"probe-cmd@clman-probe is installed by running a command on this machine (`echo harmless-probe`) that has not been reviewed yet, so it was not run. Review and accept it from its /plugin details pane, or in a terminal: run `claude plugin install probe-cmd@clman-probe`.\",\"failureCode\":\"command_source_refused\",\"shownCommand\":{\"kind\":\"command_source\",\"pluginId\":\"probe-cmd@clman-probe\",\"command\":\"echo harmless-probe\",\"mode\":\"copy\",\"catalogRevision\":\"sha256:2a2273bc2d1de8ee7e4461d162a34b1924d6c70aad07f42a0a256c5498972160\",\"sha256\":\"11b2bf7317d26fa915ab00d39e77b37bfd79cdec7ae9ee21a002e88d18c49e4c\"}}";
+        let res = parse_install_result(Lang::En, stdout, "", 0).expect("should parse successfully");
+        assert_eq!(res.status, "needs_confirmation");
+        assert_eq!(res.sha256.as_deref(), Some("11b2bf7317d26fa915ab00d39e77b37bfd79cdec7ae9ee21a002e88d18c49e4c"));
+        assert_eq!(res.command.as_deref(), Some("echo harmless-probe"));
+        assert_eq!(res.kind.as_deref(), Some("command_source"));
+    }
+
+    #[test]
+    fn parse_install_result_ok_outcome() {
+        let stdout = "{\"command\":\"install\",\"outcome\":\"ok\",\"message\":\"Successfully installed plugin: probe-cmd@clman-probe\"}";
+        let res = parse_install_result(Lang::En, stdout, "", 0).expect("should parse ok outcome");
+        assert_eq!(res.status, "ok");
+        assert_eq!(res.message, "Successfully installed plugin: probe-cmd@clman-probe");
+        assert_eq!(res.command, None);
+        assert_eq!(res.sha256, None);
+        assert_eq!(res.kind, None);
+    }
+
+    #[test]
+    fn parse_install_result_failed_without_shown_command() {
+        let stdout = "{\"command\":\"install\",\"outcome\":\"failed\",\"message\":\"Plugin not found\"}";
+        let err = parse_install_result(Lang::En, stdout, "", 1).unwrap_err();
+        assert_eq!(err, "Plugin not found");
     }
 }

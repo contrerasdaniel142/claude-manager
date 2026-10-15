@@ -532,6 +532,16 @@ pub struct PluginSearchPage {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct PluginInstallResult {
+    pub status: String,
+    pub message: String,
+    pub command: Option<String>,
+    pub kind: Option<String>,
+    pub sha256: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct OutputStyleFile {
     pub id: String,
     pub scope: Scope,

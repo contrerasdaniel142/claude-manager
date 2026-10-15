@@ -176,17 +176,25 @@ export default function SkillMarketplaceBox({ scope, localNames, onInstalled }: 
                     {preview && (
                       <div className="space-y-2">
                         {preview.description && <p className="text-sm">{preview.description}</p>}
-                        {preview.when_to_use && (
-                          <p className="text-xs" style={{ color: "var(--text-muted)" }}>
-                            {t.skillMarketplace.whenToUseLabel}: {preview.when_to_use}
+                        {preview.source_gone ? (
+                          <p className="text-[11px]" style={{ color: "var(--text-muted)" }}>
+                            {t.skillMarketplace.sourceGoneNote}
                           </p>
+                        ) : (
+                          <>
+                            {preview.when_to_use && (
+                              <p className="text-xs" style={{ color: "var(--text-muted)" }}>
+                                {t.skillMarketplace.whenToUseLabel}: {preview.when_to_use}
+                              </p>
+                            )}
+                            <div
+                              className="prose prose-sm max-w-none max-h-64 overflow-auto rounded-md border p-2"
+                              style={{ borderColor: "var(--border)", color: "var(--text)" }}
+                            >
+                              <ReactMarkdown>{preview.body || t.skillMarketplace.emptyBody}</ReactMarkdown>
+                            </div>
+                          </>
                         )}
-                        <div
-                          className="prose prose-sm max-w-none max-h-64 overflow-auto rounded-md border p-2"
-                          style={{ borderColor: "var(--border)", color: "var(--text)" }}
-                        >
-                          <ReactMarkdown>{preview.body || t.skillMarketplace.emptyBody}</ReactMarkdown>
-                        </div>
                       </div>
                     )}
                   </div>
