@@ -18,8 +18,10 @@ import PluginsView from "./components/PluginsView";
 import RulesView from "./components/RulesView";
 import LanguageProvider, { useLanguage } from "./components/LanguageProvider";
 import StatusBar, { type ProblemItem } from "./components/StatusBar";
-import TitleBar, { getLastProject } from "./components/TitleBar";
+import TitleBar, { getLastProject, loadRecents, pushRecent, baseName, type RecentProject } from "./components/TitleBar";
 import ToastProvider, { useToast } from "./components/ToastProvider";
+import WelcomeView from "./components/WelcomeView";
+import { open } from "@tauri-apps/plugin-dialog";
 import type { Category, Scope } from "./types";
 
 export default function App() {
@@ -58,6 +60,23 @@ function AppContent() {
   const [scope, setScope] = useState<Scope>("project");
   const [category, setCategory] = useState<Category>("steering");
   const [roots, setRoots] = useState({ project: "", global: "" });
+  const [recents, setRecents] = useState<RecentProject[]>(loadRecents);
+
+  const switchTo = async (path: string) => {
+    try {
+      await api.setProjectRoot(path);
+      setRecents(pushRecent(path));
+      setRoots((r) => ({ ...r, project: path }));
+      setRefreshSignal((n) => n + 1);
+      toast.success(t.titleBar.switchedToast(baseName(path)));
+    } catch (e) {
+      toast.error(String(e));
+    }
+  };
+  const openFolder = async () => {
+    const picked = await open({ directory: true, multiple: false });
+    if (typeof picked === "string") await switchTo(picked);
+  };
   const [counts, setCounts] = useState<Record<Category, number>>({
     advisor: 0,
     steering: 0,
@@ -305,6 +324,8 @@ function AppContent() {
     };
   }, [scope, refreshSignal]);
 
+  const hasOpenedProject = recents.length > 0;
+
   return (
     <div className="flex flex-col h-screen overflow-hidden text-sm">
       <CommandPalette
@@ -321,10 +342,9 @@ function AppContent() {
       />
       <TitleBar
         projectPath={roots.project}
-        onProjectChanged={(path) => {
-          setRoots((r) => ({ ...r, project: path }));
-          setRefreshSignal((n) => n + 1);
-        }}
+        recents={recents}
+        onOpenFolder={openFolder}
+        onSwitchTo={switchTo}
         onCheckForUpdates={() => runUpdateCheck({ silent: false })}
       />
     <div className="flex flex-1 overflow-hidden">
@@ -339,116 +359,122 @@ function AppContent() {
         globalRoot={roots.global}
       />
       <main className="flex-1 overflow-hidden" style={{ background: "var(--bg)" }}>
-        {category === "advisor" && <AdvisorView onNavigate={navigate} />}
-        {category === "steering" && (
-          <ClaudeMdView
-            scope={scope}
-            refreshSignal={refreshSignal}
-            onListChanged={(list) => setCounts((c) => ({ ...c, steering: list.length }))}
-          />
+        {!hasOpenedProject ? (
+          <WelcomeView recents={recents} onOpenFolder={openFolder} onSwitchTo={switchTo} />
+        ) : (
+          <>
+            {category === "advisor" && <AdvisorView onNavigate={navigate} />}
+            {category === "steering" && (
+              <ClaudeMdView
+                scope={scope}
+                refreshSignal={refreshSignal}
+                onListChanged={(list) => setCounts((c) => ({ ...c, steering: list.length }))}
+              />
+            )}
+            {category === "rules" && (
+              <RulesView
+                scope={scope}
+                refreshSignal={refreshSignal}
+                onListChanged={(list) => setCounts((c) => ({ ...c, rules: list.length }))}
+                prefill={prefillFor("rules")}
+                onPrefillConsumed={clearPrefill}
+                openId={openIdFor("rules")}
+                onOpenIdConsumed={clearOpenTarget}
+              />
+            )}
+            {category === "hooks" && (
+              <HooksView
+                scope={scope}
+                refreshSignal={refreshSignal}
+                onCountChanged={(n) => setCounts((c) => ({ ...c, hooks: n }))}
+                onLoadErrorsChanged={(errors) =>
+                  setProblemSources((p) => ({
+                    ...p,
+                    hooks: errors.map((message) => ({ category: "hooks" as Category, title: t.hooks.settingsJsonErrors, message })),
+                  }))
+                }
+                prefill={prefillFor("hooks")}
+                onPrefillConsumed={clearPrefill}
+              />
+            )}
+            {category === "agents" && (
+              <AgentsView
+                scope={scope}
+                refreshSignal={refreshSignal}
+                onListChanged={(list) => {
+                  setCounts((c) => ({ ...c, agents: list.length }));
+                  const invalid = list.filter((a) => !a.valid);
+                  setInvalidCounts((c) => ({ ...c, agents: invalid.length }));
+                  setProblemSources((p) => ({
+                    ...p,
+                    agents: invalid.map((a) => ({
+                      category: "agents" as Category,
+                      title: a.name || a.id,
+                      message: a.errors.join(" "),
+                    })),
+                  }));
+                }}
+                openId={openIdFor("agents")}
+                onOpenIdConsumed={clearOpenTarget}
+              />
+            )}
+            {category === "skills" && (
+              <SkillsView
+                scope={scope}
+                refreshSignal={refreshSignal}
+                onListChanged={(list) => {
+                  setCounts((c) => ({ ...c, skills: list.length }));
+                  const invalid = list.filter((s) => !s.valid);
+                  setInvalidCounts((c) => ({ ...c, skills: invalid.length }));
+                  setProblemSources((p) => ({
+                    ...p,
+                    skills: invalid.map((s) => ({
+                      category: "skills" as Category,
+                      title: s.name || s.id,
+                      message: s.errors.join(" "),
+                    })),
+                  }));
+                }}
+                prefill={prefillFor("skills")}
+                onPrefillConsumed={clearPrefill}
+                openId={openIdFor("skills")}
+                onOpenIdConsumed={clearOpenTarget}
+              />
+            )}
+            {category === "outputStyles" && (
+              <OutputStylesView
+                scope={scope}
+                refreshSignal={refreshSignal}
+                onListChanged={(list) => setCounts((c) => ({ ...c, outputStyles: list.length }))}
+                prefill={prefillFor("outputStyles")}
+                onPrefillConsumed={clearPrefill}
+                openId={openIdFor("outputStyles")}
+                onOpenIdConsumed={clearOpenTarget}
+              />
+            )}
+            {category === "permissions" && (
+              <PermissionsView
+                scope={scope}
+                refreshSignal={refreshSignal}
+                onCountChanged={(n) => setCounts((c) => ({ ...c, permissions: n }))}
+                prefill={prefillFor("permissions")}
+                onPrefillConsumed={clearPrefill}
+              />
+            )}
+            {category === "mcpServers" && (
+              <McpServersView
+                scope={scope}
+                refreshSignal={refreshSignal}
+                onListChanged={(list) => setCounts((c) => ({ ...c, mcpServers: list.length }))}
+                prefill={prefillFor("mcpServers")}
+                onPrefillConsumed={clearPrefill}
+                openId={openIdFor("mcpServers")}
+                onOpenIdConsumed={clearOpenTarget}
+              />
+            )}
+            {category === "plugins" && <PluginsView scope={scope} />}
+          </>
         )}
-        {category === "rules" && (
-          <RulesView
-            scope={scope}
-            refreshSignal={refreshSignal}
-            onListChanged={(list) => setCounts((c) => ({ ...c, rules: list.length }))}
-            prefill={prefillFor("rules")}
-            onPrefillConsumed={clearPrefill}
-            openId={openIdFor("rules")}
-            onOpenIdConsumed={clearOpenTarget}
-          />
-        )}
-        {category === "hooks" && (
-          <HooksView
-            scope={scope}
-            refreshSignal={refreshSignal}
-            onCountChanged={(n) => setCounts((c) => ({ ...c, hooks: n }))}
-            onLoadErrorsChanged={(errors) =>
-              setProblemSources((p) => ({
-                ...p,
-                hooks: errors.map((message) => ({ category: "hooks" as Category, title: t.hooks.settingsJsonErrors, message })),
-              }))
-            }
-            prefill={prefillFor("hooks")}
-            onPrefillConsumed={clearPrefill}
-          />
-        )}
-        {category === "agents" && (
-          <AgentsView
-            scope={scope}
-            refreshSignal={refreshSignal}
-            onListChanged={(list) => {
-              setCounts((c) => ({ ...c, agents: list.length }));
-              const invalid = list.filter((a) => !a.valid);
-              setInvalidCounts((c) => ({ ...c, agents: invalid.length }));
-              setProblemSources((p) => ({
-                ...p,
-                agents: invalid.map((a) => ({
-                  category: "agents" as Category,
-                  title: a.name || a.id,
-                  message: a.errors.join(" "),
-                })),
-              }));
-            }}
-            openId={openIdFor("agents")}
-            onOpenIdConsumed={clearOpenTarget}
-          />
-        )}
-        {category === "skills" && (
-          <SkillsView
-            scope={scope}
-            refreshSignal={refreshSignal}
-            onListChanged={(list) => {
-              setCounts((c) => ({ ...c, skills: list.length }));
-              const invalid = list.filter((s) => !s.valid);
-              setInvalidCounts((c) => ({ ...c, skills: invalid.length }));
-              setProblemSources((p) => ({
-                ...p,
-                skills: invalid.map((s) => ({
-                  category: "skills" as Category,
-                  title: s.name || s.id,
-                  message: s.errors.join(" "),
-                })),
-              }));
-            }}
-            prefill={prefillFor("skills")}
-            onPrefillConsumed={clearPrefill}
-            openId={openIdFor("skills")}
-            onOpenIdConsumed={clearOpenTarget}
-          />
-        )}
-        {category === "outputStyles" && (
-          <OutputStylesView
-            scope={scope}
-            refreshSignal={refreshSignal}
-            onListChanged={(list) => setCounts((c) => ({ ...c, outputStyles: list.length }))}
-            prefill={prefillFor("outputStyles")}
-            onPrefillConsumed={clearPrefill}
-            openId={openIdFor("outputStyles")}
-            onOpenIdConsumed={clearOpenTarget}
-          />
-        )}
-        {category === "permissions" && (
-          <PermissionsView
-            scope={scope}
-            refreshSignal={refreshSignal}
-            onCountChanged={(n) => setCounts((c) => ({ ...c, permissions: n }))}
-            prefill={prefillFor("permissions")}
-            onPrefillConsumed={clearPrefill}
-          />
-        )}
-        {category === "mcpServers" && (
-          <McpServersView
-            scope={scope}
-            refreshSignal={refreshSignal}
-            onListChanged={(list) => setCounts((c) => ({ ...c, mcpServers: list.length }))}
-            prefill={prefillFor("mcpServers")}
-            onPrefillConsumed={clearPrefill}
-            openId={openIdFor("mcpServers")}
-            onOpenIdConsumed={clearOpenTarget}
-          />
-        )}
-        {category === "plugins" && <PluginsView scope={scope} />}
       </main>
     </div>
     <StatusBar scope={scope} problems={problems} onNavigate={setCategory} />

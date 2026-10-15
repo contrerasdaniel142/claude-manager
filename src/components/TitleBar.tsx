@@ -1,23 +1,20 @@
 import { useEffect, useState } from "react";
 import { getCurrentWindow } from "@tauri-apps/api/window";
-import { open } from "@tauri-apps/plugin-dialog";
-import { api } from "../api";
 import { useLanguage } from "./LanguageProvider";
-import { useToast } from "./ToastProvider";
 
 const RECENTS_KEY = "clman-recent-projects";
 const MAX_RECENTS = 8;
 
-interface RecentProject {
+export interface RecentProject {
   path: string;
   name: string;
 }
 
-function baseName(path: string): string {
+export function baseName(path: string): string {
   return path.split(/[\\/]/).filter(Boolean).pop() || path;
 }
 
-function loadRecents(): RecentProject[] {
+export function loadRecents(): RecentProject[] {
   try {
     const raw = localStorage.getItem(RECENTS_KEY);
     return raw ? JSON.parse(raw) : [];
@@ -30,7 +27,7 @@ export function getLastProject(): string | null {
   return loadRecents()[0]?.path ?? null;
 }
 
-function pushRecent(path: string): RecentProject[] {
+export function pushRecent(path: string): RecentProject[] {
   const updated = [{ path, name: baseName(path) }, ...loadRecents().filter((r) => r.path !== path)].slice(
     0,
     MAX_RECENTS,
@@ -45,13 +42,21 @@ function pushRecent(path: string): RecentProject[] {
 
 interface Props {
   projectPath: string;
-  onProjectChanged: (path: string) => void;
+  recents: RecentProject[];
+  onOpenFolder: () => void;
+  onSwitchTo: (path: string) => void;
   onCheckForUpdates: () => void;
 }
 
 const win = getCurrentWindow();
 
-export default function TitleBar({ projectPath, onProjectChanged, onCheckForUpdates }: Props) {
+export default function TitleBar({
+  projectPath,
+  recents,
+  onOpenFolder,
+  onSwitchTo,
+  onCheckForUpdates,
+}: Props) {
   const [menuOpen, setMenuOpen] = useState(false);
 
   useEffect(() => {
@@ -62,26 +67,7 @@ export default function TitleBar({ projectPath, onProjectChanged, onCheckForUpda
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, [menuOpen]);
-  const [recents, setRecents] = useState<RecentProject[]>(loadRecents);
-  const toast = useToast();
   const { t } = useLanguage();
-
-  const switchTo = async (path: string) => {
-    setMenuOpen(false);
-    try {
-      await api.setProjectRoot(path);
-      setRecents(pushRecent(path));
-      onProjectChanged(path);
-      toast.success(t.titleBar.switchedToast(baseName(path)));
-    } catch (e) {
-      toast.error(String(e));
-    }
-  };
-
-  const openFolder = async () => {
-    const picked = await open({ directory: true, multiple: false });
-    if (typeof picked === "string") await switchTo(picked);
-  };
 
   return (
     <div
@@ -107,7 +93,13 @@ export default function TitleBar({ projectPath, onProjectChanged, onCheckForUpda
             className="absolute top-8 left-16 z-50 w-64 rounded-lg border shadow-lg text-xs overflow-hidden"
             style={{ background: "var(--bg-elevated)", borderColor: "var(--border)", color: "var(--text)" }}
           >
-            <button className="w-full text-left px-3 py-2 hover:opacity-80" onClick={openFolder}>
+            <button
+              className="w-full text-left px-3 py-2 hover:opacity-80"
+              onClick={() => {
+                setMenuOpen(false);
+                onOpenFolder();
+              }}
+            >
               {t.titleBar.openFolder}
             </button>
             {recents.length > 0 && (
@@ -118,7 +110,10 @@ export default function TitleBar({ projectPath, onProjectChanged, onCheckForUpda
                     key={r.path}
                     className="w-full text-left px-3 py-1.5 hover:opacity-80 truncate block"
                     title={r.path}
-                    onClick={() => switchTo(r.path)}
+                    onClick={() => {
+                      setMenuOpen(false);
+                      onSwitchTo(r.path);
+                    }}
                   >
                     {r.name}
                   </button>

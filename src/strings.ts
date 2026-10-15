@@ -170,6 +170,12 @@ const en = {
     noUpdates: "You're on the latest build.",
     switchedToast: (name: string) => `Switched to ${name}.`,
   },
+  welcome: {
+    description:
+      "Open a project folder to manage its Claude Code configuration: steering, rules, hooks, agents, skills, and more.",
+    openFolder: "Open Folder",
+    recentProjects: "Recent Projects",
+  },
   advisor: {
     intro:
       "Describe the behavior you want, or what you'd like Claude to do, and I'll figure out which Claude Code tool fits — a Skill, a Hook, a Rule, an Output Style, a Permission, an MCP server, or a Plugin.",
@@ -614,6 +620,12 @@ const es: typeof en = {
     checkForUpdates: "Buscar actualizaciones...",
     noUpdates: "Ya tienes la última versión.",
     switchedToast: (name: string) => `Cambiaste a ${name}.`,
+  },
+  welcome: {
+    description:
+      "Abre una carpeta de proyecto para administrar su configuración de Claude Code: steering, rules, hooks, agentes, skills y más.",
+    openFolder: "Abrir carpeta",
+    recentProjects: "Proyectos recientes",
   },
   advisor: {
     intro:
