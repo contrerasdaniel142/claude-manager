@@ -362,7 +362,7 @@ function AppContent() {
         globalRoot={roots.global}
       />
       <main className="flex-1 overflow-hidden" style={{ background: "var(--bg)" }}>
-        {!hasOpenedProject ? (
+        {!hasOpenedProject && scope === "project" ? (
           <WelcomeView recents={recents} onOpenFolder={openFolder} onSwitchTo={switchTo} />
         ) : (
           <>
