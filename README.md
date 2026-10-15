@@ -138,8 +138,7 @@ git tag vX.Y.Z && git push origin vX.Y.Z
 
 - Pushing a tag matching `v*.*.*` triggers the release workflow at `.github/workflows/release.yml`, which builds installers for Windows, macOS (Apple Silicon and Intel) and Linux, and attaches them to a DRAFT GitHub Release for that tag. Publish the draft manually after review.
 
-<!-- TODO: drop in a real screenshot or demo GIF of the app here -->
-<!-- ![Claude Manager screenshot](path/to/screenshot.png) -->
+![Claude Manager screenshot](docs/screenshot.png)
 
 ## License
 
