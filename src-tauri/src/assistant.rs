@@ -1,8 +1,8 @@
+use crate::fsutil::silent_command;
 use crate::i18n;
 use crate::models::AppState;
 use crate::validate::KNOWN_HOOK_EVENTS;
 use serde_json::{json, Value};
-use std::process::Command;
 use std::sync::OnceLock;
 use tauri::State;
 
@@ -14,7 +14,7 @@ static CLAUDE_BIN: OnceLock<Option<String>> = OnceLock::new();
 fn detect_claude() -> Option<&'static str> {
     CLAUDE_BIN
         .get_or_init(|| {
-            let output = Command::new("claude").arg("--version").output().ok()?;
+            let output = silent_command("claude").arg("--version").output().ok()?;
             if output.status.success() {
                 Some("claude".to_string())
             } else {
@@ -269,7 +269,7 @@ fn generate_with_ai_impl(
     );
     let schema_str = serde_json::to_string(&schema).map_err(|e| e.to_string())?;
 
-    let output = Command::new(claude)
+    let output = silent_command(claude)
         .arg("-p")
         .arg(&full_prompt)
         .arg("--model")

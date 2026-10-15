@@ -91,6 +91,25 @@ pub fn load_settings(lang: Lang, path: &std::path::Path) -> Result<Map<String, V
     }
 }
 
+/// Builds a `Command` for an external program the way every production
+/// call site should — on Windows, the shipped release build has no
+/// console of its own (see `main.rs`'s windows_subsystem), so spawning a
+/// console program (claude, git, python) without this flag briefly flashes
+/// a new console window per spawn. Invisible in `cargo run` dev builds
+/// (which already have a console to share), only visible in the real
+/// installed .exe.
+pub fn silent_command(program: &str) -> std::process::Command {
+    let mut cmd = std::process::Command::new(program);
+    #[cfg(windows)]
+    {
+        use std::os::windows::process::CommandExt;
+        const CREATE_NO_WINDOW: u32 = 0x08000000;
+        cmd.creation_flags(CREATE_NO_WINDOW);
+    }
+    cmd
+}
+
+
 /// Directory names we never want to recurse into when scanning a project for
 /// CLAUDE.md files: dependency/build/VCS noise that can be huge or irrelevant.
 pub const SKIP_DIRS: &[&str] = &[

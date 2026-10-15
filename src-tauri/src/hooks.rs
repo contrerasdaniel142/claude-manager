@@ -1,10 +1,9 @@
-use crate::fsutil::{load_settings, settings_path};
+use crate::fsutil::{load_settings, settings_path, silent_command};
 use crate::i18n;
 use crate::models::{AppState, HookRule, HooksDocument, Scope};
 use crate::validate::{validate_hook, KNOWN_HOOK_EVENTS};
 use serde_json::{Map, Value};
 use std::fs;
-use std::process::Command;
 use std::sync::OnceLock;
 use tauri::State;
 
@@ -25,7 +24,7 @@ static PYTHON_BIN: OnceLock<String> = OnceLock::new();
 fn detect_python() -> &'static str {
     PYTHON_BIN.get_or_init(|| {
         for candidate in ["python3", "python", "py"] {
-            if let Ok(output) = Command::new(candidate).arg("--version").output() {
+            if let Ok(output) = silent_command(candidate).arg("--version").output() {
                 if output.status.success() {
                     let combined = format!(
                         "{}{}",
@@ -467,7 +466,7 @@ fn save_hooks_impl(state: &AppState, scope: Scope, rules: Vec<HookRule>) -> Resu
 mod tests {
     use super::*;
     use std::io::Write;
-    use std::process::Stdio;
+    use std::process::{Command, Stdio};
 
     fn run_wrapper(script_path: &std::path::Path, stdin_json: &str) -> (i32, String) {
         let python = detect_python();

@@ -1,14 +1,14 @@
+use crate::fsutil::silent_command;
 use crate::i18n;
 use crate::models::Lang;
 use std::path::PathBuf;
-use std::process::Command;
 use std::sync::OnceLock;
 
 static GIT_BIN: OnceLock<bool> = OnceLock::new();
 
 fn detect_git() -> bool {
     *GIT_BIN.get_or_init(|| {
-        Command::new("git")
+        silent_command("git")
             .arg("--version")
             .output()
             .map(|o| o.status.success())
@@ -33,7 +33,7 @@ pub fn clone_repo(lang: Lang, repo_url: &str) -> Result<PathBuf, String> {
         .map_err(|e| e.to_string())?
         .keep();
 
-    let output = Command::new("git")
+    let output = silent_command("git")
         .args(["clone", "--depth", "1", "--quiet", "--", repo_url])
         .arg(&tmp)
         .output()

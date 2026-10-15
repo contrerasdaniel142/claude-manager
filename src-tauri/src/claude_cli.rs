@@ -1,7 +1,7 @@
+use crate::fsutil::silent_command;
 use crate::i18n;
 use crate::models::Lang;
 use std::path::Path;
-use std::process::Command;
 
 /// Runs `claude <subcommand> <args...>` and returns (stdout, stderr, exit_code).
 /// Shared by every clman feature that defers to the real `claude` CLI instead
@@ -15,7 +15,7 @@ pub fn run(lang: Lang, subcommand: &str, args: &[&str]) -> Result<(String, Strin
 /// (`claude mcp ... --scope project`), which resolve "this project" from the
 /// process's current directory, not from any argument we can pass it.
 pub fn run_in(lang: Lang, dir: Option<&Path>, subcommand: &str, args: &[&str]) -> Result<(String, String, i32), String> {
-    let mut cmd = Command::new("claude");
+    let mut cmd = silent_command("claude");
     cmd.arg(subcommand).args(args);
     if let Some(d) = dir {
         cmd.current_dir(d);
