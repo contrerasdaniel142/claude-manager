@@ -10,6 +10,7 @@ mod models;
 mod output_styles;
 mod permissions;
 mod plugins;
+mod relaunch;
 mod rules;
 mod search;
 mod skill_import;
@@ -68,7 +69,6 @@ pub fn run(project_root: PathBuf) {
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_dialog::init())
-        .plugin(tauri_plugin_process::init())
         .manage(AppState::new(project_root, global_root))
         .setup(|app| {
             #[cfg(desktop)]
@@ -79,6 +79,7 @@ pub fn run(project_root: PathBuf) {
         })
         .invoke_handler(tauri::generate_handler![
             get_roots,
+            relaunch::relaunch_app,
             set_language,
             set_project_root,
             agents::list_agents,

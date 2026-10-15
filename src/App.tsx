@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { listen } from "@tauri-apps/api/event";
 import { check } from "@tauri-apps/plugin-updater";
-import { relaunch } from "@tauri-apps/plugin-process";
 import { api } from "./api";
 import Sidebar from "./components/Sidebar";
 import AdvisorView from "./components/AdvisorView";
@@ -206,7 +205,7 @@ function AppContent() {
               try {
                 await update.downloadAndInstall();
                 await new Promise((resolve) => setTimeout(resolve, 1500));
-                await relaunch();
+                await api.relaunchApp();
               } catch (err) {
                 installing = false;
                 showUpdateToast();

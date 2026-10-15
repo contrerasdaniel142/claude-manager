@@ -31,6 +31,7 @@ import type {
 
 export const api = {
   getRoots: () => invoke<{ project: string; global: string }>("get_roots"),
+  relaunchApp: () => invoke<void>("relaunch_app"),
   setLanguage: (lang: "en" | "es") => invoke<void>("set_language", { lang }),
   setProjectRoot: (path: string) => invoke<{ project: string; global: string }>("set_project_root", { path }),
 
