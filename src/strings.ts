@@ -25,6 +25,11 @@ const en = {
     },
     language: "Language",
   },
+  updater: {
+    available: "An update is available: v{version}",
+    install: "Install update",
+    installing: "Installing...",
+  },
   common: {
     save: "Save",
     delete: "Delete",
@@ -464,6 +469,11 @@ const es: typeof en = {
       plugins: "Plugins",
     },
     language: "Idioma",
+  },
+  updater: {
+    available: "Hay una actualización disponible: v{version}",
+    install: "Instalar actualización",
+    installing: "Instalando...",
   },
   common: {
     save: "Guardar",

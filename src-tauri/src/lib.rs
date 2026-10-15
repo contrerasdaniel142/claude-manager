@@ -69,8 +69,11 @@ pub fn run(project_root: PathBuf) {
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_dialog::init())
+        .plugin(tauri_plugin_process::init())
         .manage(AppState::new(project_root, global_root))
         .setup(|app| {
+            #[cfg(desktop)]
+            app.handle().plugin(tauri_plugin_updater::Builder::new().build())?;
             let state = app.state::<AppState>();
             watcher::start(app.handle().clone(), &state);
             Ok(())

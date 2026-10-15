@@ -1,15 +1,30 @@
 import { createContext, useCallback, useContext, useRef, useState, type ReactNode } from "react";
 
+export interface ToastAction {
+  label: string;
+  onClick: () => void | Promise<void>;
+  disabled?: boolean;
+}
+
+export interface ToastOptions {
+  action?: ToastAction;
+  sticky?: boolean;
+}
+
 interface Toast {
   id: number;
   kind: "success" | "error" | "info";
   message: string;
+  action?: ToastAction;
+  sticky?: boolean;
 }
 
 interface ToastApi {
-  success: (message: string) => void;
-  error: (message: string) => void;
-  info: (message: string) => void;
+  success: (message: string, options?: ToastOptions) => number;
+  error: (message: string, options?: ToastOptions) => number;
+  info: (message: string, options?: ToastOptions) => number;
+  update: (id: number, message: string, options?: ToastOptions) => void;
+  dismiss: (id: number) => void;
 }
 
 const ToastContext = createContext<ToastApi | null>(null);
@@ -39,18 +54,36 @@ export default function ToastProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const push = useCallback(
-    (kind: Toast["kind"], message: string) => {
+    (kind: Toast["kind"], message: string, options?: ToastOptions): number => {
       const id = nextId.current++;
-      setToasts((ts) => [...ts, { id, kind, message }]);
-      setTimeout(() => dismiss(id), DURATION_MS[kind]);
+      setToasts((ts) => [...ts, { id, kind, message, action: options?.action, sticky: options?.sticky }]);
+      if (!options?.sticky) {
+        setTimeout(() => dismiss(id), DURATION_MS[kind]);
+      }
+      return id;
     },
     [dismiss],
   );
 
+  const update = useCallback(
+    (id: number, message: string, options?: ToastOptions) => {
+      setToasts((ts) =>
+        ts.map((t) =>
+          t.id === id
+            ? { ...t, message, action: options?.action, sticky: options?.sticky }
+            : t
+        )
+      );
+    },
+    [],
+  );
+
   const api: ToastApi = {
-    success: (m) => push("success", m),
-    error: (m) => push("error", m),
-    info: (m) => push("info", m),
+    success: (m, opt) => push("success", m, opt),
+    error: (m, opt) => push("error", m, opt),
+    info: (m, opt) => push("info", m, opt),
+    update,
+    dismiss,
   };
 
   return (
@@ -73,8 +106,10 @@ function ToastItem({ toast, onDismiss }: { toast: Toast; onDismiss: () => void }
     toast.kind === "error" ? "var(--danger)" : toast.kind === "success" ? "var(--ok)" : "var(--accent)";
   return (
     <div
-      onClick={onDismiss}
-      className="toast-enter rounded-xl px-4 py-3 text-sm max-w-sm whitespace-pre-line cursor-pointer"
+      onClick={() => {
+        if (!toast.action?.disabled) onDismiss();
+      }}
+      className="toast-enter rounded-xl px-4 py-3 text-sm max-w-sm whitespace-pre-line cursor-pointer flex flex-col gap-2"
       style={{
         background: "var(--bg-elevated)",
         color: "var(--text)",
@@ -83,7 +118,26 @@ function ToastItem({ toast, onDismiss }: { toast: Toast; onDismiss: () => void }
         pointerEvents: "auto",
       }}
     >
-      {toast.message}
+      <div>{toast.message}</div>
+      {toast.action && (
+        <div className="flex justify-end pt-1">
+          <button
+            type="button"
+            disabled={toast.action.disabled}
+            onClick={async (e) => {
+              e.stopPropagation();
+              await toast.action?.onClick();
+            }}
+            className="px-2.5 py-1 text-xs rounded-md font-medium transition-opacity cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+            style={{
+              background: "var(--accent)",
+              color: "var(--accent-fg, #ffffff)",
+            }}
+          >
+            {toast.action.label}
+          </button>
+        </div>
+      )}
     </div>
   );
 }

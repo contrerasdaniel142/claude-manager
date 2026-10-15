@@ -1,5 +1,7 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { listen } from "@tauri-apps/api/event";
+import { check } from "@tauri-apps/plugin-updater";
+import { relaunch } from "@tauri-apps/plugin-process";
 import { api } from "./api";
 import Sidebar from "./components/Sidebar";
 import AdvisorView from "./components/AdvisorView";
@@ -17,7 +19,7 @@ import RulesView from "./components/RulesView";
 import LanguageProvider, { useLanguage } from "./components/LanguageProvider";
 import StatusBar, { type ProblemItem } from "./components/StatusBar";
 import TitleBar from "./components/TitleBar";
-import ToastProvider from "./components/ToastProvider";
+import ToastProvider, { useToast } from "./components/ToastProvider";
 import type { Category, Scope } from "./types";
 
 export default function App() {
@@ -47,6 +49,8 @@ const CATEGORY_ORDER: Category[] = [
 
 function AppContent() {
   const { t } = useLanguage();
+  const toast = useToast();
+  const updateChecked = useRef(false);
   const [paletteOpen, setPaletteOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
   const [openTarget, setOpenTarget] = useState<{ category: Category; id: string } | null>(null);
@@ -157,6 +161,55 @@ function AppContent() {
 
   useEffect(() => {
     api.getRoots().then(setRoots);
+  }, []);
+
+  useEffect(() => {
+    if (updateChecked.current) return;
+    updateChecked.current = true;
+
+    (async () => {
+      try {
+        const update = await check();
+        if (!update) return;
+
+        let installing = false;
+        let toastId: number | null = null;
+        const msg = t.updater.available.replace("{version}", update.version);
+
+        const showUpdateToast = () => {
+          const options = {
+            sticky: true,
+            action: {
+              label: installing ? t.updater.installing : t.updater.install,
+              disabled: installing,
+              onClick: async () => {
+                if (installing) return;
+                installing = true;
+                showUpdateToast();
+                try {
+                  await update.downloadAndInstall();
+                  await relaunch();
+                } catch (err) {
+                  installing = false;
+                  showUpdateToast();
+                  toast.error(String(err));
+                }
+              },
+            },
+          };
+
+          if (toastId === null) {
+            toastId = toast.info(msg, options);
+          } else {
+            toast.update(toastId, msg, options);
+          }
+        };
+
+        showUpdateToast();
+      } catch (err) {
+        console.warn("Update check failed:", err);
+      }
+    })();
   }, []);
 
   // Un archivo tocado por fuera de la app (editado a mano, git pull, otra
